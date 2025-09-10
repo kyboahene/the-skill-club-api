@@ -17,16 +17,15 @@ import {
 } from '@nestjs/swagger';
 import { PostsService } from './posts.service';
 import { CreatePostDto, UpdatePostDto } from './dto';
-import { JwtGuard } from '../auth/guard';
+import { Auth } from '../auth/decorator';
 
 @ApiTags('Posts')
 @Controller('posts')
 export class PostsController {
   constructor(private readonly postsService: PostsService) {}
 
+  @Auth(['add_post'])
   @Post()
-  @UseGuards(JwtGuard)
-  @ApiBearerAuth()
   @ApiOperation({ summary: 'Create a new post' })
   @ApiResponse({ status: 201, description: 'Post created successfully' })
   create(@Body() createPostDto: CreatePostDto, @Request() req) {
@@ -40,9 +39,8 @@ export class PostsController {
     return this.postsService.findAll();
   }
 
+  @Auth(['get_user_posts'])
   @Get('my-posts')
-  @UseGuards(JwtGuard)
-  @ApiBearerAuth()
   @ApiOperation({ summary: 'Get current user posts' })
   @ApiResponse({ status: 200, description: 'List of user posts' })
   findUserPosts(@Request() req) {
@@ -57,9 +55,8 @@ export class PostsController {
     return this.postsService.findOne(id);
   }
 
+  @Auth(['update_post'])
   @Patch(':id')
-  @UseGuards(JwtGuard)
-  @ApiBearerAuth()
   @ApiOperation({ summary: 'Update post' })
   @ApiResponse({ status: 200, description: 'Post updated successfully' })
   @ApiResponse({ status: 403, description: 'Forbidden' })
@@ -72,9 +69,8 @@ export class PostsController {
     return this.postsService.update(id, updatePostDto, req.user.id);
   }
 
+  @Auth(['delete_post'])
   @Delete(':id')
-  @UseGuards(JwtGuard)
-  @ApiBearerAuth()
   @ApiOperation({ summary: 'Delete post' })
   @ApiResponse({ status: 200, description: 'Post deleted successfully' })
   @ApiResponse({ status: 403, description: 'Forbidden' })

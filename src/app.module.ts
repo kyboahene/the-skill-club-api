@@ -14,6 +14,7 @@ import { PostsModule } from './posts/posts.module';
 import { SmsModule } from './sms/sms.module';
 import { PaginationModule } from './pagination/pagination.module';
 import { SendEmailsModule } from './send-emails/send-emails.module';
+import { PermissionsModule } from './permissions/permissions.module';
 
 @Module({
   imports: [
@@ -48,6 +49,7 @@ import { SendEmailsModule } from './send-emails/send-emails.module';
     SmsModule,
     PaginationModule,
     SendEmailsModule,
+    PermissionsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

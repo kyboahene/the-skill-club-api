@@ -1,10 +1,44 @@
 import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
+import { seedPermissions } from './seeds/permission.seed';
 
 const prisma = new PrismaClient();
 
 async function main() {
   console.log('🌱 Seeding database...');
+
+  // Seed permissions first
+  console.log('📋 Seeding permissions...');
+  await seedPermissions(prisma);
+
+  // Create admin role with all permissions
+  const adminRole = await prisma.role.upsert({
+    where: { name: 'ADMIN' },
+    update: {},
+    create: {
+      name: 'ADMIN',
+      permissions: {
+        connect: await prisma.permission.findMany().then(permissions => 
+          permissions.map(p => ({ id: p.id }))
+        )
+      }
+    },
+  });
+
+  // Create user role with basic permissions
+  const userRole = await prisma.role.upsert({
+    where: { name: 'USER' },
+    update: {},
+    create: {
+      name: 'USER',
+      permissions: {
+        connect: [
+          { name: 'get_permissions' },
+          { name: 'get_permission' }
+        ]
+      }
+    },
+  });
 
   // Create admin user
   const hashedPassword = await bcrypt.hash('admin123', 10);
@@ -17,7 +51,9 @@ async function main() {
       firstName: 'Admin',
       lastName: 'User',
       password: hashedPassword,
-      role: 'ADMIN',
+      role: {
+        connect: { id: adminRole.id }
+      }
     },
   });
 
@@ -32,7 +68,9 @@ async function main() {
       firstName: 'John',
       lastName: 'Doe',
       password: userPassword,
-      role: 'USER',
+      role: {
+        connect: { id: userRole.id }
+      }
     },
   });
 

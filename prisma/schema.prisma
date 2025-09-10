@@ -17,7 +17,7 @@ model User {
   lastName  String?
   password  String
   isActive  Boolean  @default(true)
-  role      Role     @default(USER)
+  role      Role[]
   
   refreshToken String?
   
@@ -29,10 +29,21 @@ model User {
   @@map("users")
 }
 
-enum Role {
-  USER
-  ADMIN
-  MODERATOR
+model Role {
+  id          String       @id @default(uuid())
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  name        String       @unique
+  user        User[]
+  permissions Permission[]
+}
+
+model Permission {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  name      String   @unique
+  roles     Role[]
 }
 
 model Post {
