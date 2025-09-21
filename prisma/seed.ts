@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { seedPermissions } from './seeds/permission.seed';
+import { seedRoles } from './seeds/role.seed';
 
 const prisma = new PrismaClient();
 
@@ -11,36 +12,45 @@ async function main() {
   console.log('📋 Seeding permissions...');
   await seedPermissions(prisma);
 
-  // Create admin role with all permissions
-  const adminRole = await prisma.role.upsert({
-    where: { name: 'ADMIN' },
-    update: {},
-    create: {
-      name: 'ADMIN',
-      permissions: {
-        connect: await prisma.permission.findMany().then(permissions => 
-          permissions.map(p => ({ id: p.id }))
-        )
-      }
-    },
+  // Seed roles
+  console.log('📋 Seeding roles...');
+  await seedRoles(prisma);
+
+  // System roles are created by the role seeder
+  console.log('🔑 System roles created by role seeder');
+
+  // Find the roles created by the seeder
+  const superAdminRole = await prisma.role.findFirst({
+    where: {
+      name: 'super_admin',
+      context: 'PLATFORM',
+      contextId: null
+    }
   });
 
-  // Create user role with basic permissions
-  const userRole = await prisma.role.upsert({
-    where: { name: 'USER' },
-    update: {},
-    create: {
-      name: 'USER',
-      permissions: {
-        connect: [
-          { name: 'get_permissions' },
-          { name: 'get_permission' }
-        ]
-      }
-    },
+  const verifiedTalentRole = await prisma.role.findFirst({
+    where: {
+      name: 'verified_talent',
+      context: 'TALENT',
+      contextId: null
+    }
   });
 
-  // Create admin user
+  const companyAdminTemplate = await prisma.role.findFirst({
+    where: {
+      name: 'company_admin',
+      context: 'COMPANY',
+      contextId: null
+    }
+  });
+
+  if (!superAdminRole || !verifiedTalentRole || !companyAdminTemplate) {
+    throw new Error('System roles not found. Make sure role seeder ran successfully.');
+  }
+
+  console.log('👤 Creating users...');
+
+  // Create super admin user
   const hashedPassword = await bcrypt.hash('admin123', 10);
   
   const adminUser = await prisma.user.upsert({
@@ -48,59 +58,144 @@ async function main() {
     update: {},
     create: {
       email: 'admin@example.com',
-      firstName: 'Admin',
-      lastName: 'User',
+      name: 'Super Admin',
       password: hashedPassword,
-      role: {
-        connect: { id: adminRole.id }
+      emailVerified: true,
+      roles: {
+        connect: { id: superAdminRole.id }
       }
     },
   });
 
-  // Create regular user
+  // Create regular talent user
   const userPassword = await bcrypt.hash('user123', 10);
   
-  const regularUser = await prisma.user.upsert({
+  const talentUser = await prisma.user.upsert({
     where: { email: 'user@example.com' },
     update: {},
     create: {
       email: 'user@example.com',
-      firstName: 'John',
-      lastName: 'Doe',
+      name: 'John Talent',
       password: userPassword,
-      role: {
-        connect: { id: userRole.id }
+      emailVerified: true,
+      roles: {
+        connect: { id: verifiedTalentRole.id }
       }
     },
   });
 
-  // Create sample posts
-  await prisma.post.createMany({
-    data: [
-      {
-        title: 'Getting Started with NestJS',
-        content: 'This is a sample post about NestJS...',
-        published: true,
-        authorId: adminUser.id,
-      },
-      {
-        title: 'Understanding Prisma',
-        content: 'This post explains how to use Prisma...',
-        published: true,
-        authorId: regularUser.id,
-      },
-      {
-        title: 'Draft Post',
-        content: 'This is a draft post...',
-        published: false,
-        authorId: regularUser.id,
-      },
-    ],
+  // Create talent profile for the user
+  await prisma.talent.upsert({
+    where: { userId: talentUser.id },
+    update: {},
+    create: {
+      userId: talentUser.id,
+      description: 'Experienced software developer',
+      country: 'Ghana',
+      city: 'Accra',
+      profession: 'GRADUATE',
+      availability: true,
+      vetted: false,
+      new: true
+    },
   });
 
+  // Create a sample company
+  const sampleCompany = await prisma.company.upsert({
+    where: { slug: 'tech-corp' },
+    update: {},
+    create: {
+      name: 'Tech Corp',
+      slug: 'tech-corp',
+      overview: 'A leading technology company',
+      country: 'Ghana',
+      city: 'Accra',
+      website: 'https://techcorp.com',
+      companySize: '50-100',
+      isActive: true
+    },
+  });
+
+  // Create company admin user
+  const companyAdminPassword = await bcrypt.hash('companyadmin123', 10);
+  
+  const companyAdminUser = await prisma.user.upsert({
+    where: { email: 'admin@techcorp.com' },
+    update: {},
+    create: {
+      email: 'admin@techcorp.com',
+      name: 'Company Admin',
+      password: companyAdminPassword,
+      emailVerified: true
+    },
+  });
+
+  // Get template permissions
+  const templateWithPermissions = await prisma.role.findUnique({
+    where: { id: companyAdminTemplate.id },
+    include: { permissions: true }
+  });
+
+  // Find or create company-specific admin role
+  let companySpecificAdminRole = await prisma.role.findFirst({
+    where: {
+      name: 'company_admin',
+      context: 'COMPANY',
+      contextId: sampleCompany.id
+    }
+  });
+
+  if (!companySpecificAdminRole) {
+    companySpecificAdminRole = await prisma.role.create({
+      data: {
+        name: 'company_admin',
+        description: 'Administrator for Tech Corp',
+        context: 'COMPANY',
+        contextId: sampleCompany.id,
+        isSystem: false,
+        permissions: {
+          connect: templateWithPermissions?.permissions.map(p => ({ id: p.id })) || []
+        }
+      },
+    });
+  }
+
+  // Connect company admin user to the company role
+  await prisma.user.update({
+    where: { id: companyAdminUser.id },
+    data: {
+      roles: {
+        connect: { id: companySpecificAdminRole.id }
+      }
+    }
+  });
+
+  // Create company membership if it doesn't exist
+  const existingMembership = await prisma.companyMembership.findUnique({
+    where: {
+      userId_companyId: {
+        userId: companyAdminUser.id,
+        companyId: sampleCompany.id
+      }
+    }
+  });
+
+  if (!existingMembership) {
+    await prisma.companyMembership.create({
+      data: {
+        userId: companyAdminUser.id,
+        companyId: sampleCompany.id,
+        joinedAt: new Date(),
+        isActive: true
+      },
+    });
+  }
+
   console.log('✅ Database seeded successfully!');
-  console.log('👤 Admin user: admin@example.com / admin123');
-  console.log('👤 Regular user: user@example.com / user123');
+  console.log('👤 Super Admin: admin@example.com / admin123');
+  console.log('👤 Talent User: user@example.com / user123');
+  console.log('👤 Company Admin: admin@techcorp.com / companyadmin123');
+  console.log('🏢 Sample Company: Tech Corp');
 }
 
 main()

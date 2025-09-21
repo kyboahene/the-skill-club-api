@@ -10,11 +10,20 @@ import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { PrismaModule } from './prisma/prisma.module';
-import { PostsModule } from './posts/posts.module';
 import { SmsModule } from './sms/sms.module';
 import { PaginationModule } from './pagination/pagination.module';
 import { SendEmailsModule } from './send-emails/send-emails.module';
 import { PermissionsModule } from './permissions/permissions.module';
+import { RolesModule } from './roles/roles.module';
+import { AssessmentsModule } from './assessments/assessments.module';
+import { CompaniesModule } from './companies/companies.module';
+import { EventsModule } from './events/events.module';
+import { TalentsModule } from './talents/talents.module';
+import { JobsModule } from './jobs/jobs.module';
+import { CandidateSessionsModule } from './candidate-sessions/candidate-sessions.module';
+import { CandidateManagementModule } from './candidate-management/candidate-management.module';
+import { TestBankModule } from './test-bank/test-bank.module';
+import { TestsModule } from './tests/tests.module';
 
 @Module({
   imports: [
@@ -33,8 +42,7 @@ import { PermissionsModule } from './permissions/permissions.module';
       },
       defaults: {
         from: {
-          name: "Starter Kit",
-          address: process.env.EMAIL_ADDRESS
+          from: `${process.env.APP_NAME} <${process.env.EMAIL_ADDRESS}>`,
         },
       },
       template: {
@@ -45,11 +53,20 @@ import { PermissionsModule } from './permissions/permissions.module';
     PrismaModule,
     AuthModule,
     UsersModule,
-    PostsModule,
     SmsModule,
     PaginationModule,
     SendEmailsModule,
     PermissionsModule,
+    RolesModule,
+    AssessmentsModule,
+    CompaniesModule,
+    EventsModule,
+    TalentsModule,
+    JobsModule,
+    CandidateSessionsModule,
+    CandidateManagementModule,
+    TestBankModule,
+    TestsModule
   ],
   controllers: [AppController],
   providers: [AppService],

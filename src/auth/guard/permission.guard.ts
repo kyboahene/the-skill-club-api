@@ -22,7 +22,7 @@ export class PermissionGuard implements CanActivate {
             id: userId,
           },
           select: {
-            role: {
+            roles: {
               select: {
                 permissions: true,
               },
@@ -30,12 +30,12 @@ export class PermissionGuard implements CanActivate {
           },
         })
         .then((res) => {
-          if (!res || !res.role) {
+          if (!res || !res.roles) {
             resolve(false);
             return;
           }
 
-          const exist = res.role.some((role) => {
+          const exist = res.roles.some((role) => {
             return role.permissions.some((permission) =>
               permissions.includes(permission.name)
             );

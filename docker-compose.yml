@@ -1,6 +1,5 @@
-version: '3.8'
 services:
-  postgres:
+  the-skill-club-server-db:
     image: postgres:13
     ports:
       - 5432:5432
@@ -9,9 +8,9 @@ services:
       POSTGRES_PASSWORD: password
       POSTGRES_DB: starter_db
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - the-skill-club-server-db-data:/var/lib/postgresql/data
     networks:
-      - app-network
+      - the-skill-club-server-network
 
   redis:
     image: redis:6.2
@@ -20,13 +19,13 @@ services:
       - 6379:6379
     command: redis-server --loglevel warning
     volumes:
-      - redis_data:/data
+      - the-skill-club-server-redis-data:/data
     networks:
-      - app-network
+      - the-skill-club-server-network
 
 networks:
-  app-network:
+  the-skill-club-server-network:
 
 volumes:
-  postgres_data:
-  redis_data:
+  the-skill-club-server-db-data:
+  the-skill-club-server-redis-data:

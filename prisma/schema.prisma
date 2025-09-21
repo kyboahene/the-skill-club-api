@@ -10,52 +10,1256 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  firstName String?
-  lastName  String?
-  password  String
-  isActive  Boolean  @default(true)
-  role      Role[]
-  
-  refreshToken String?
-  
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+// Enums
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  PENDING
+  SUSPENDED
+}
 
-  posts Post[]
+enum UserType {
+  TALENT           // Job seekers, students, graduates
+  COMPANY_USER     // Company employees (recruiters, HR, admins)
+  PLATFORM_ADMIN   // Platform administrators (can access multiple companies)
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+  PREFER_NOT_TO_SAY
+}
+
+enum Profession {
+  STUDENT
+  GRADUATE
+}
+
+enum RoleContext {
+  PLATFORM    // Global platform roles (super_admin, platform_admin)
+  COMPANY     // Company-specific roles (company_admin, recruiter, hr_manager)
+  TALENT      // Talent-specific roles (verified_talent, premium_talent)
+}
+
+enum AcademicYear {
+  FIRST
+  SECOND
+  THIRD
+  FOURTH
+}
+
+enum WorkMode {
+  CONTRACT
+  INTERNSHIP
+  ENTRY_LEVEL
+}
+
+enum Degree {
+  HIGH_SCHOOL_DIPLOMA
+  ASSOCIATE_DEGREE
+  BACHELORS_DEGREE
+  MASTERS_DEGREE
+  MBA
+  DOCTORS_DEGREE
+}
+
+enum ResourceType {
+  VIDEO
+  ARTICLE
+}
+
+enum EventCategory {
+  LEADERSHIP
+  MENTORSHIP
+  JOB
+  CAREER_ADVICE
+  SKILLS
+}
+
+enum JobStatus {
+  ACTIVE
+  CLOSED
+  DRAFT
+}
+
+enum JobType {
+  FULL_TIME
+  PART_TIME
+  CONTRACT
+  INTERNSHIP
+}
+
+enum JobCategory {
+  WEB_MOBILE_DEV
+  DESIGNER
+  WRITING
+  MARKETING
+  OTHER
+}
+
+enum Remote {
+  ONSITE
+  REMOTE
+  ONSITE_OR_REMOTE
+}
+
+enum Experience {
+  NO_EXPERIENCE
+  ONE_YEAR
+  TWO_YEARS
+  THREE_YEARS
+  FOUR_YEARS
+  FIVE_OR_MORE_YEARS
+}
+
+enum Salary {
+  MONTHLY
+  WEEKLY
+  YEARLY
+}
+
+enum ApplicationStatus {
+  APPLIED
+  UNDER_REVIEW
+  INTERVIEWING
+  HIRED
+  REJECTED
+  WITHDRAWN
+}
+
+enum InterviewType {
+  VIDEO
+  PHONE
+  IN_PERSON
+  HYBRID
+}
+
+enum InterviewStatus {
+  PENDING
+  COMPLETED
+  CANCELLED
+  RESCHEDULED
+}
+
+enum SenderType {
+  USER
+  COMPANY
+  ADMIN
+}
+
+enum CompanyRole {
+  ADMIN
+  RECRUITER
+  HR_MANAGER
+  INTERVIEWER
+}
+
+enum TransferReason {
+  JOB_CHANGE
+  COMPANY_MERGER
+  ROLE_CHANGE
+  VOLUNTARY_SWITCH
+  ADMIN_TRANSFER
+}
+
+enum TestCategory {
+  COGNITIVE
+  SKILL
+  LANGUAGE
+  PERSONALITY
+  CULTURE_FIT
+}
+
+enum QuestionType {
+  MULTIPLE_CHOICE
+  TRUE_FALSE
+  OPEN_ENDED
+  CODING
+  VIDEO_RESPONSE
+}
+
+enum CandidateSessionStatus {
+  IN_PROGRESS
+  COMPLETED
+  DISQUALIFIED
+  ABANDONED
+  EXPIRED
+}
+
+enum InvitationStatus {
+  SENT
+  OPENED
+  STARTED
+  COMPLETED
+  EXPIRED
+  CANCELLED
+}
+
+enum EmailDeliveryStatus {
+  PENDING
+  SENT
+  DELIVERED
+  FAILED
+  BOUNCED
+}
+
+enum EmailTemplateType {
+  INVITATION
+  REMINDER
+  EXPIRATION_WARNING
+  COMPLETION_CONFIRMATION
+}
+
+enum EmailCampaignStatus {
+  DRAFT
+  SCHEDULED
+  SENDING
+  COMPLETED
+  FAILED
+}
+
+enum EmailAnalyticsStatus {
+  SENT
+  DELIVERED
+  OPENED
+  CLICKED
+  BOUNCED
+  FAILED
+}
+
+enum ActivityType {
+  INVITATION_SENT
+  ASSESSMENT_STARTED
+  ASSESSMENT_COMPLETED
+  INVITATION_EXPIRED
+  APPLICATION_SUBMITTED
+  INTERVIEW_SCHEDULED
+}
+
+enum ViolationSeverity {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum NetworkStatus {
+  ONLINE
+  OFFLINE
+  SLOW
+}
+
+enum ActivityLevel {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum RecordingViolationType {
+  NO_FACE_DETECTED
+  MULTIPLE_FACES
+  CAMERA_BLOCKED
+  SCREEN_SHARING_DETECTED
+  RECORDING_INTERRUPTED
+}
+
+// Authentication Models
+model EmailVerificationToken {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("email_verification_tokens")
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("password_reset_tokens")
+}
+
+model AuthLog {
+  id        String   @id @default(cuid())
+  userId    String
+  event     String   // 'login_success', 'login_failed', 'email_verified', etc.
+  details   String?
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("auth_logs")
+}
+
+// Core User Models - SIMPLIFIED SINGLE COMPANY
+model User {
+  id              String     @id @default(cuid())
+  email           String     @unique
+  name            String?
+  phone           String?
+  password        String?
+  type            UserType   @default(TALENT)
+  status          UserStatus @default(PENDING)
+  refreshToken    String?
+  lastLoginAt     DateTime?
+  emailVerified   Boolean    @default(false)
+  emailVerifiedAt DateTime?
+  preferences     Json?      // User preferences, settings
+  
+  // SIMPLIFIED: Single company relationship
+  companyId       String?    // NULL for talents, required for company users
+  roles          Role[]
+  
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  // Relations
+  company                  Company?            @relation("CompanyUsers", fields: [companyId], references: [id], onDelete: SetNull)
+  talent                   Talent?
+  
+  // Transfer history
+  transfersFrom            CompanyTransfer[]   @relation("TransferFrom")
+  initiatedTransfers       CompanyTransfer[]   @relation("TransferInitiator")
+  
+  // Activity Relations
+  sentMessages             Message[]               @relation("SentMessages")
+  receivedMessages         Message[]               @relation("ReceivedMessages")
+  createdJobs              Job[]                   @relation("CreatedJobs")
+  createdTests             Test[]                  @relation("CreatedTests")
+  createdAssessments       CompanyAssessment[]     @relation("CreatedAssessments")
+  sentCandidateInvitations CandidateInvitation[]   @relation("SentInvitations")
+  createdEmailTemplates    EmailTemplate[]         @relation("CreatedEmailTemplates")
+  createdEmailCampaigns    EmailCampaign[]         @relation("CreatedEmailCampaigns")
+  assessmentProgress       AssessmentProgress[]
+  
+  // Auth relations
+  emailVerificationToken   EmailVerificationToken?
+  passwordResetToken       PasswordResetToken?
+  authLogs                 AuthLog[]
 
   @@map("users")
 }
 
 model Role {
   id          String       @id @default(uuid())
+  name        String
+  description String?
+  context     RoleContext? // NEW: Defines where this role applies
+  contextId   String?      // NEW: ID of the context (companyId for company roles)
+  isSystem    Boolean      @default(false) // NEW: System roles vs custom roles
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
-  name        String       @unique
-  user        User[]
+  
+  // Relations
+  users       User[]
   permissions Permission[]
+
+  @@unique([name, context, contextId]) // Allow same role name in different contexts
+  @@map("roles")
 }
 
 model Permission {
-  id        String   @id @default(uuid())
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  name      String   @unique
-  roles     Role[]
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  category    String?  // Group permissions (e.g., "jobs", "assessments", "users")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  roles       Role[]
+
+  @@map("permissions")
 }
 
-model Post {
+// Company Transfer History (replaces CompanyMembership)
+model CompanyTransfer {
+  id             String         @id @default(cuid())
+  userId         String         @unique
+  fromCompanyId  String?        // NULL if first company join
+  toCompanyId    String?        // NULL if leaving platform
+  fromRole       CompanyRole?
+  toRole         CompanyRole?
+  reason         TransferReason
+  notes          String?
+  initiatedBy    String         // Who initiated the transfer
+  approvedBy     String?        // Who approved it (for some transfer types)
+  transferredAt  DateTime       @default(now())
+  createdAt      DateTime       @default(now())
+
+  // Relations
+  user           User           @relation("TransferFrom", fields: [userId], references: [id], onDelete: Cascade)
+  fromCompany    Company?       @relation("TransfersFrom", fields: [fromCompanyId], references: [id], onDelete: SetNull)
+  toCompany      Company?       @relation("TransfersTo", fields: [toCompanyId], references: [id], onDelete: SetNull)
+  initiator      User           @relation("TransferInitiator", fields: [initiatedBy], references: [id], onDelete: Cascade)
+
+  @@map("company_transfers")
+}
+
+// Talent Profile Models (unchanged)
+model Talent {
+  id             String        @id @default(cuid())
+  userId         String        @unique
+  description    String?
+  gender         Gender?
+  linkedIn       String?
+  gitPortWebsite String?
+  website        String?
+  country        String?
+  city           String?
+  profession     Profession?
+  university     String?
+  year           AcademicYear?
+  mode           WorkMode[]
+  resume         String?
+  profile        String?
+  vetted         Boolean       @default(false)
+  availability   Boolean       @default(true)
+  new            Boolean       @default(true)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  // Relations
+  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  skills           TalentSkill[]
+  workHistory      WorkHistory[]
+  education        Education[]
+  personalProjects PersonalProject[]
+  certificates     Certificate[]
+  applications     Application[]
+
+  @@map("talents")
+}
+
+model TalentSkill {
   id        String   @id @default(cuid())
-  title     String
-  content   String?
-  published Boolean  @default(false)
-  authorId  String
-  author    User     @relation(fields: [authorId], references: [id])
-  
+  talentId  String
+  skillId   String
+  verified  Boolean  @default(false)
+  score     Int?
+  level     String? // e.g., "Beginner", "Intermediate", "Advanced", "Expert"
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@map("posts")
+  // Relations
+  talent Talent @relation(fields: [talentId], references: [id], onDelete: Cascade)
+  skill  Skill  @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  @@unique([talentId, skillId])
+  @@map("talent_skills")
+}
+
+model Skill {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  image       String?
+  category    String?
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  talents     TalentSkill[]
+  resources   Resource[]
+  jobs        JobSkill[]
+  assessments Assessment[]
+
+  @@map("skills")
+}
+
+model WorkHistory {
+  id          String    @id @default(cuid())
+  talentId    String
+  jobTitle    String
+  company     String
+  companyLink String?
+  description String?
+  fromDate    DateTime?
+  toDate      DateTime?
+  current     Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  talent Talent @relation(fields: [talentId], references: [id], onDelete: Cascade)
+
+  @@map("work_history")
+}
+
+model Education {
+  id         String    @id @default(cuid())
+  talentId   String
+  school     String
+  schoolLink String?
+  degree     Degree?
+  course     String
+  fromDate   DateTime?
+  toDate     DateTime?
+  current    Boolean   @default(false)
+  gpa        Float?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  // Relations
+  talent Talent @relation(fields: [talentId], references: [id], onDelete: Cascade)
+
+  @@map("education")
+}
+
+model PersonalProject {
+  id           String   @id @default(cuid())
+  talentId     String
+  projectTitle String
+  projectLink  String?
+  description  String
+  year         Int?
+  technologies String[] // Array of tech stack used
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  talent Talent @relation(fields: [talentId], references: [id], onDelete: Cascade)
+
+  @@map("personal_projects")
+}
+
+model Certificate {
+  id            String    @id @default(cuid())
+  talentId      String
+  title         String
+  company       String
+  issueDate     DateTime?
+  expiryDate    DateTime?
+  credentialId  String?
+  credentialUrl String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  talent Talent @relation(fields: [talentId], references: [id], onDelete: Cascade)
+
+  @@map("certificates")
+}
+
+// Company model - SIMPLIFIED
+model Company {
+  id                   String                @id @default(cuid())
+  name                 String
+  slug                 String?               @unique
+  logo                 String?
+  type                 String?
+  market               String?
+  city                 String?
+  country              String?
+  totalRaised          String?
+  website              String?
+  overview             String?
+  address              String?
+  linkedIn             String?
+  twitter              String?
+  foundedDate          DateTime?
+  companySize          String?
+  remotePolicy         String?
+  isActive             Boolean               @default(true)
+  integrationSettings  Json?
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+
+  // Relations - SIMPLIFIED
+  users                User[]                @relation("CompanyUsers")
+  transfersFrom        CompanyTransfer[]     @relation("TransfersFrom")
+  transfersTo          CompanyTransfer[]     @relation("TransfersTo")
+  jobs                 Job[]
+  assessments          CompanyAssessment[]
+  invitations          CandidateInvitation[]
+  emailTemplates       EmailTemplate[]
+  emailCampaigns       EmailCampaign[]
+  applications         Application[]
+  rankings             CandidateRanking[]
+  activities           RecentActivity[]
+
+  @@map("companies")
+}
+
+// Job Models (updated foreign keys)
+model Job {
+  id                  String       @id @default(cuid())
+  companyId           String
+  jobTitle            String
+  status              JobStatus    @default(ACTIVE)
+  jobCategory         JobCategory?
+  workLocation        String
+  remote              Remote       @default(ONSITE)
+  requirements        String
+  responsibilities    String
+  education           String
+  pay                 String?
+  minPay              Decimal?
+  maxPay              Decimal?
+  jobType             JobType
+  about               String
+  salary              Salary       @default(YEARLY)
+  experience          Experience
+  applicationDeadline DateTime?
+  positionsAvailable  Int?
+  createdBy           String?
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+
+  // Relations
+  company      Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  creator      User?         @relation("CreatedJobs", fields: [createdBy], references: [id], onDelete: SetNull)
+  skills       JobSkill[]
+  applications Application[]
+  interviews   Interview[]
+
+  @@map("jobs")
+}
+
+model JobSkill {
+  id        String   @id @default(cuid())
+  jobId     String
+  skillId   String
+  required  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  // Relations
+  job   Job   @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  skill Skill @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  @@unique([jobId, skillId])
+  @@map("job_skills")
+}
+
+// Application Models (unchanged)
+model Application {
+  id              String            @id @default(cuid())
+  talentId        String
+  companyId       String
+  jobId           String
+  status          ApplicationStatus @default(APPLIED)
+  currentStage    Int               @default(1)
+  notes           String?
+  rejectionReason String?
+  coverLetter     String?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  // Relations
+  talent     Talent      @relation(fields: [talentId], references: [id], onDelete: Cascade)
+  company    Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  job        Job         @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  interviews Interview[]
+
+  @@unique([talentId, jobId])
+  @@map("applications")
+}
+
+model Interview {
+  id            String          @id @default(cuid())
+  applicationId String
+  jobId         String
+  scheduledDate DateTime
+  duration      Int // Duration in minutes
+  interviewType InterviewType
+  location      String?
+  meetingLink   String?
+  notes         String?
+  status        InterviewStatus @default(PENDING)
+  interviewers  String[] // Array of interviewer names/emails
+  feedback      String?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  // Relations
+  application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  job         Job         @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@map("interviews")
+}
+
+// Message Models (unchanged)
+model Message {
+  id          String     @id @default(cuid())
+  title       String
+  description String
+  senderId    String
+  receiverId  String
+  senderType  SenderType
+  read        Boolean    @default(false)
+  readAt      DateTime?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  // Relations
+  sender   User @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver User @relation("ReceivedMessages", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  @@map("messages")
+}
+
+// Resource Models (unchanged)
+model Resource {
+  id          String       @id @default(cuid())
+  skillId     String
+  link        String
+  title       String
+  description String
+  type        ResourceType
+  difficulty  String? // e.g., "Beginner", "Intermediate", "Advanced"
+  duration    Int? // Duration in minutes
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  // Relations
+  skill Skill @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  @@map("resources")
+}
+
+// Event Models (unchanged)
+model Event {
+  id           String        @id @default(cuid())
+  title        String
+  image        String?
+  link         String?
+  date         DateTime
+  endDate      DateTime?
+  location     String?
+  description  String
+  category     EventCategory
+  maxAttendees Int?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  @@map("events")
+}
+
+// Assessment Models (unchanged)
+model Assessment {
+  id           String   @id @default(cuid())
+  skillId      String?
+  question     String
+  alternatives String[]
+  answer       String?
+  difficulty   String? // e.g., "Easy", "Medium", "Hard"
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  skill    Skill?               @relation(fields: [skillId], references: [id], onDelete: SetNull)
+  progress AssessmentProgress[]
+
+  @@map("assessments")
+}
+
+model AssessmentProgress {
+  id                   String    @id @default(cuid())
+  userId               String
+  assessmentId         String
+  currentQuestionIndex Int       @default(0)
+  answers              Json
+  status               String    @default("Started")
+  score                Int?
+  startedAt            DateTime  @default(now())
+  completedAt          DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  // Relations
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assessment Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, assessmentId])
+  @@map("assessment_progress")
+}
+
+// Company Assessment Models (unchanged)
+model Test {
+  id              String       @id @default(cuid())
+  title           String
+  description     String?
+  category        TestCategory
+  languageCodes   String[]
+  validated       Boolean      @default(false)
+  createdBy       String
+  version         Int          @default(1)
+  tags            String[]
+  durationSeconds Int?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  // Relations
+  creator     User         @relation("CreatedTests", fields: [createdBy], references: [id], onDelete: Cascade)
+  questions   Question[]
+  testConfigs TestConfig[]
+
+  @@map("tests")
+}
+
+model Question {
+  id               String       @id @default(cuid())
+  testId           String?
+  assessmentId     String?
+  type             QuestionType
+  prompt           String
+  options          String[]
+  correctAnswer    Json?
+  maxScore         Int?
+  codeLanguage     String?
+  timeLimitSeconds Int?
+  difficulty       String? // e.g., "Easy", "Medium", "Hard"
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  // Relations
+  test              Test?              @relation(fields: [testId], references: [id], onDelete: Cascade)
+  companyAssessment CompanyAssessment? @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  candidateAnswers  CandidateAnswer[]
+  trackingData      QuestionTracking[]
+
+  @@map("questions")
+}
+
+model TestConfig {
+  id            String   @id @default(cuid())
+  testId        String
+  assessmentId  String
+  questionLimit Int?
+  timeLimit     Int? // Time limit in minutes
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  test       Test              @relation(fields: [testId], references: [id], onDelete: Cascade)
+  assessment CompanyAssessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+
+  @@unique([testId, assessmentId])
+  @@map("test_configs")
+}
+
+model CompanyAssessment {
+  id                 String    @id @default(cuid())
+  title              String
+  description        String?
+  ownerCompanyId     String
+  testIds            String[]
+  maxTests           Int       @default(5)
+  maxCustomQuestions Int       @default(20)
+  brandingSettings   Json?
+  antiCheatSettings  Json?
+  languageCodes      String[]
+  timeLimitSeconds   Int?
+  timeLimitMinutes   Int?
+  passMark           Int       @default(70)
+  expiresAt          DateTime?
+  createdBy          String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  // Relations
+  company           Company               @relation(fields: [ownerCompanyId], references: [id], onDelete: Cascade)
+  creator           User?                 @relation("CreatedAssessments", fields: [createdBy], references: [id], onDelete: SetNull)
+  testConfigs       TestConfig[]
+  customQuestions   Question[]
+  candidateSessions CandidateSession[]
+  invitations       CandidateInvitation[]
+
+  @@map("company_assessments")
+}
+
+// Candidate Management Models (unchanged)
+model CandidateInvitation {
+  id             String   @id @default(cuid())
+  candidateEmail String
+  candidateName  String
+  assessmentIds  String[]
+  companyId      String
+  invitedBy      String
+  invitedByName  String
+
+  status              InvitationStatus    @default(SENT)
+  sentAt              DateTime            @default(now())
+  openedAt            DateTime?
+  startedAt           DateTime?
+  completedAt         DateTime?
+  expiresAt           DateTime
+  attemptCount        Int                 @default(0)
+  maxAttempts         Int                 @default(3)
+  remindersSent       Int                 @default(0)
+  lastReminderSent    DateTime?
+  invitationLink      String
+  emailDeliveryStatus EmailDeliveryStatus @default(PENDING)
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+
+  // Relations
+  company     Company             @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  inviter     User                @relation("SentInvitations", fields: [invitedBy], references: [id], onDelete: Cascade)
+  assessments CompanyAssessment[]
+
+  @@map("candidate_invitations")
+}
+
+model CandidateSession {
+  id             String                 @id @default(cuid())
+  candidateEmail String
+  candidateName  String
+  candidatePhone String?
+  assessmentId   String
+  startTime      DateTime               @default(now())
+  endTime        DateTime?
+  status         CandidateSessionStatus @default(IN_PROGRESS)
+  ipAddress      String?
+  userAgent      String?
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+
+  // Relations
+  assessment      CompanyAssessment    @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  answers         CandidateAnswer[]
+  scoreSummary    ScoreSummary?
+  violations      AntiCheatViolation[]
+  deviceInfo      DeviceInfo?
+  sessionBehavior SessionBehavior?
+  monitoring      RealTimeMonitoring?
+  screenRecording ScreenRecordingData?
+  trackingData    QuestionTracking[]
+
+  @@map("candidate_sessions")
+}
+
+model CandidateAnswer {
+  id            String   @id @default(cuid())
+  sessionId     String
+  questionId    String
+  response      Json
+  timeSpent     Int
+  submittedAt   DateTime @default(now())
+  score         Int?
+  maxScore      Int?
+  percentage    Float?
+  attempts      Int      @default(1)
+  difficulty    String?
+  testId        String?
+  scoringMethod String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  session  CandidateSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  question Question         @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, questionId])
+  @@map("candidate_answers")
+}
+
+model ScoreSummary {
+  id               String   @id @default(cuid())
+  sessionId        String   @unique
+  totalScore       Int
+  maxPossibleScore Int
+  percentage       Float
+  breakdown        Json // Category-wise scores
+  passStatus       Boolean
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  // Relations
+  session CandidateSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@map("score_summaries")
+}
+
+model AntiCheatViolation {
+  id          String            @id @default(cuid())
+  sessionId   String
+  type        String
+  description String
+  timestamp   DateTime          @default(now())
+  questionId  String?
+  severity    ViolationSeverity
+  details     Json?
+  resolved    Boolean           @default(false)
+  createdAt   DateTime          @default(now())
+
+  // Relations
+  session CandidateSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@map("anti_cheat_violations")
+}
+
+model DeviceInfo {
+  id               String   @id @default(cuid())
+  sessionId        String   @unique
+  userAgent        String
+  platform         String
+  language         String
+  timezone         String
+  screenResolution String
+  windowSize       String
+  colorDepth       Int
+  pixelRatio       Float
+  touchSupport     Boolean
+  cookieEnabled    Boolean
+  onlineStatus     Boolean
+  createdAt        DateTime @default(now())
+
+  // Relations
+  session CandidateSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@map("device_info")
+}
+
+model SessionBehavior {
+  id                      String   @id @default(cuid())
+  sessionId               String   @unique
+  focusLossCount          Int      @default(0)
+  tabSwitchCount          Int      @default(0)
+  rightClickAttempts      Int      @default(0)
+  copyPasteAttempts       Int      @default(0)
+  devToolsAttempts        Int      @default(0)
+  fullscreenExits         Int      @default(0)
+  screenCaptureAttempts   Int      @default(0)
+  totalViolations         Int      @default(0)
+  suspiciousActivityScore Float    @default(0)
+  timeSpentPerQuestion    Json
+  keystrokePatterns       Json?
+  mouseMovements          Json?
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  // Relations
+  session CandidateSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@map("session_behavior")
+}
+
+model RealTimeMonitoring {
+  id                    String        @id @default(cuid())
+  sessionId             String        @unique
+  isActive              Boolean       @default(true)
+  lastActivity          DateTime      @default(now())
+  currentQuestion       String?
+  timeOnCurrentQuestion Int           @default(0)
+  windowFocused         Boolean       @default(true)
+  fullscreenActive      Boolean       @default(false)
+  networkStatus         NetworkStatus @default(ONLINE)
+  batteryLevel          Int?
+  memoryUsage           Float?
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+
+  // Relations
+  session CandidateSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@map("real_time_monitoring")
+}
+
+model ScreenRecordingData {
+  id                 String    @id @default(cuid())
+  sessionId          String    @unique
+  recordingStartTime DateTime  @default(now())
+  recordingEndTime   DateTime?
+  totalDuration      Int       @default(0)
+  recordingUrl       String? // URL to the complete recording
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  // Relations
+  session         CandidateSession     @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  screenshots     ScreenshotData[]
+  cameraSnapshots CameraSnapshotData[]
+  violations      RecordingViolation[]
+
+  @@map("screen_recording_data")
+}
+
+model ScreenshotData {
+  id            String        @id @default(cuid())
+  recordingId   String
+  timestamp     DateTime      @default(now())
+  screenshotUrl String
+  questionId    String?
+  activityLevel ActivityLevel @default(MEDIUM)
+  createdAt     DateTime      @default(now())
+
+  // Relations
+  recording ScreenRecordingData @relation(fields: [recordingId], references: [id], onDelete: Cascade)
+
+  @@map("screenshot_data")
+}
+
+model CameraSnapshotData {
+  id                    String   @id @default(cuid())
+  recordingId           String
+  timestamp             DateTime @default(now())
+  imageUrl              String
+  faceDetected          Boolean  @default(false)
+  multipleFacesDetected Boolean  @default(false)
+  questionId            String?
+  createdAt             DateTime @default(now())
+
+  // Relations
+  recording ScreenRecordingData @relation(fields: [recordingId], references: [id], onDelete: Cascade)
+
+  @@map("camera_snapshot_data")
+}
+
+model RecordingViolation {
+  id          String                 @id @default(cuid())
+  recordingId String
+  type        RecordingViolationType
+  timestamp   DateTime               @default(now())
+  description String
+  severity    ViolationSeverity
+  questionId  String?
+  createdAt   DateTime               @default(now())
+
+  // Relations
+  recording ScreenRecordingData @relation(fields: [recordingId], references: [id], onDelete: Cascade)
+
+  @@map("recording_violations")
+}
+
+model QuestionTracking {
+  id           String    @id @default(cuid())
+  sessionId    String
+  questionId   String
+  startTime    DateTime  @default(now())
+  endTime      DateTime?
+  timeSpent    Int?
+  attempts     Int       @default(1)
+  violations   Json?
+  behaviorData Json?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  // Relations
+  session  CandidateSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  question Question         @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, questionId])
+  @@map("question_tracking")
+}
+
+// Email Management Models
+model EmailTemplate {
+  id          String            @id @default(cuid())
+  companyId   String
+  type        EmailTemplateType
+  subject     String
+  htmlContent String
+  textContent String
+  variables   String[] // Available template variables
+  isActive    Boolean           @default(true)
+  createdBy   String?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  // Relations
+  company   Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  creator   User?           @relation("CreatedEmailTemplates", fields: [createdBy], references: [id], onDelete: SetNull)
+  campaigns EmailCampaign[]
+
+  @@map("email_templates")
+}
+
+model EmailCampaign {
+  id             String              @id @default(cuid())
+  companyId      String
+  templateId     String
+  name           String
+  type           EmailTemplateType
+  recipientCount Int                 @default(0)
+  sentCount      Int                 @default(0)
+  deliveredCount Int                 @default(0)
+  openedCount    Int                 @default(0)
+  clickedCount   Int                 @default(0)
+  failedCount    Int                 @default(0)
+  status         EmailCampaignStatus @default(DRAFT)
+  scheduledAt    DateTime?
+  sentAt         DateTime?
+  completedAt    DateTime?
+  createdBy      String
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  // Relations
+  company   Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  template  EmailTemplate    @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  creator   User             @relation("CreatedEmailCampaigns", fields: [createdBy], references: [id], onDelete: Cascade)
+  analytics EmailAnalytics[]
+
+  @@map("email_campaigns")
+}
+
+model EmailAnalytics {
+  id             String               @id @default(cuid())
+  campaignId     String
+  recipientEmail String
+  status         EmailAnalyticsStatus
+  sentAt         DateTime             @default(now())
+  deliveredAt    DateTime?
+  openedAt       DateTime?
+  clickedAt      DateTime?
+  userAgent      String?
+  ipAddress      String?
+  createdAt      DateTime             @default(now())
+
+  // Relations
+  campaign EmailCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@map("email_analytics")
+}
+
+// Statistics and Analytics Models
+model CandidateRanking {
+  id                   String   @id @default(cuid())
+  companyId            String
+  candidateEmail       String
+  candidateName        String
+  totalScore           Int
+  averageScore         Float
+  completedAssessments Int
+  totalAssessments     Int
+  completionRate       Float
+  rank                 Int
+  lastActivityDate     DateTime
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  // Relations
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, candidateEmail])
+  @@map("candidate_rankings")
+}
+
+model RecentActivity {
+  id              String       @id @default(cuid())
+  companyId       String
+  type            ActivityType
+  candidateEmail  String
+  candidateName   String
+  assessmentTitle String?
+  metadata        Json?
+  timestamp       DateTime     @default(now())
+  createdAt       DateTime     @default(now())
+
+  // Relations
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@map("recent_activities")
 }

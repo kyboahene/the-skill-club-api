@@ -20,8 +20,24 @@ export class PrismaService extends PrismaClient implements OnModuleInit {
 
   async cleanDB() {
     return this.$transaction([
-      this.post.deleteMany(),
       this.user.deleteMany(),
+      this.permission.deleteMany(),
+      this.role.deleteMany(),
+      this.job.deleteMany(),
+      this.jobSkill.deleteMany(),
+      this.application.deleteMany(),
+      this.interview.deleteMany(),
+      this.company.deleteMany(),
+      this.companyMembership.deleteMany(),
+      this.companyMembership.deleteMany(),
+      this.talent.deleteMany(),
+      this.talentSkill.deleteMany(),
+      this.workHistory.deleteMany(),
+      this.education.deleteMany(),
+      this.personalProject.deleteMany(),
+      this.certificate.deleteMany(),
+      this.application.deleteMany(),
+      this.interview.deleteMany(),
     ]);
   }
 }

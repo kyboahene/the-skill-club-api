@@ -1,42 +1,65 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { PaginationService } from '@/pagination/pagination.service';
+import { Prisma } from '@prisma/client';
+import { CreateUserDto } from './dto/create-user.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
+import { UserWithRelationsEntity } from './entities/user-with-relations.entity';
 
 @Injectable()
 export class UsersService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private paginationService: PaginationService, private prisma: PrismaService) {}
 
-  async findAll() {
-    return this.prisma.user.findMany({
-      select: {
-        id: true,
-        email: true,
-        firstName: true,
-        lastName: true,
-        role: true,
-        isActive: true,
-        createdAt: true,
+  async createUser(data: CreateUserDto) {
+    
+    return this.prisma.user.create({
+      data: {
+        email: data.email,
+        password: data.password,
+        name: data.fullName,
+        ...(data.roleId && {
+          roles: {
+            connect: {
+              id: data.roleId,
+            },
+          },
+        }),
       },
     });
   }
 
-  async findOne(id: string) {
+  async findUsers(page: number, pageSize: number, all?: boolean, search?: string) {
+    const include: Prisma.UserInclude = {
+      roles: {
+        include: {
+          permissions: true,
+        },
+      },
+    }
+
+    const where: Prisma.UserWhereInput = {
+      OR: [
+        { email: { contains: search, mode: 'insensitive' } },
+        { name: { contains: search, mode: 'insensitive' } },
+      ],
+    }
+
+    return await this.paginationService.paginate<UserWithRelationsEntity>("user", {
+      all,
+      page,
+      pageSize,
+      include,
+      where,
+    })
+  }
+
+  async findUserById(id: string) {
     return this.prisma.user.findUnique({
       where: { id },
-      select: {
-        id: true,
-        email: true,
-        firstName: true,
-        lastName: true,
-        role: true,
-        isActive: true,
-        createdAt: true,
-        posts: {
-          select: {
-            id: true,
-            title: true,
-            content: true,
-            published: true,
-            createdAt: true,
+      include: {
+        roles: {
+          include: {
+            permissions: true,
           },
         },
       },
@@ -46,6 +69,13 @@ export class UsersService {
   async findByEmail(email: string) {
     return this.prisma.user.findUnique({
       where: { email },
+    });
+  }
+
+  async updateUser(id: string, data: UpdateUserDto) {
+    return this.prisma.user.update({
+      where: { id },
+      data,
     });
   }
 }

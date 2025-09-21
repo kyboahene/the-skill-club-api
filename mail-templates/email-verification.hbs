@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{title}}</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #e9ecef;
+        }
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            color: #007bff;
+            margin-bottom: 10px;
+        }
+        .title {
+            color: #333;
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+        .content {
+            margin-bottom: 30px;
+        }
+        .greeting {
+            font-size: 18px;
+            margin-bottom: 20px;
+        }
+        .message {
+            margin-bottom: 25px;
+            line-height: 1.8;
+        }
+        .verification-btn {
+            display: inline-block;
+            padding: 15px 30px;
+            background-color: #007bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            font-weight: bold;
+            text-align: center;
+            margin: 20px 0;
+        }
+        .verification-btn:hover {
+            background-color: #0056b3;
+        }
+        .alternative-link {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+            word-break: break-all;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #e9ecef;
+            color: #666;
+            font-size: 14px;
+        }
+        .security-note {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+            font-size: 14px;
+        }
+        @media (max-width: 600px) {
+            body {
+                padding: 10px;
+            }
+            .container {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">The Skill Club</div>
+            <h1 class="title">{{title}}</h1>
+        </div>
+        
+        <div class="content">
+            <div class="greeting">Hello {{name}},</div>
+            
+            <div class="message">
+                <p>Welcome to The Skill Club! We're excited to have you join our community of talented professionals.</p>
+                
+                <p>To complete your registration and start exploring opportunities, please verify your email address by clicking the button below:</p>
+            </div>
+            
+            <div style="text-align: center;">
+                <a href="{{verificationLink}}" class="verification-btn">Verify Email Address</a>
+            </div>
+            
+            <div class="security-note">
+                <strong>Security Note:</strong> This verification link will expire in 24 hours for your security. If you didn't create an account with us, please ignore this email.
+            </div>
+            
+            <div class="message">
+                <p>If the button above doesn't work, you can copy and paste the following link into your browser:</p>
+            </div>
+            
+            <div class="alternative-link">
+                {{verificationLink}}
+            </div>
+            
+            <div class="message">
+                <p>Once verified, you'll be able to:</p>
+                <ul>
+                    <li>Complete your professional profile</li>
+                    <li>Browse and apply for jobs</li>
+                    <li>Take skill assessments</li>
+                    <li>Connect with top companies</li>
+                    <li>Access exclusive career resources</li>
+                </ul>
+            </div>
+            
+            <div class="message">
+                <p>If you have any questions or need assistance, feel free to contact our support team.</p>
+                
+                <p>Best regards,<br>
+                The Skill Club Team</p>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>&copy; {{year}} The Skill Club. All rights reserved.</p>
+            <p>This email was sent to {{email}}</p>
+            <p>{{baseURL}}</p>
+        </div>
+    </div>
+</body>
+</html>

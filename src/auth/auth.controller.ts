@@ -7,6 +7,7 @@ import {
   UseGuards,
   Get,
   Request,
+  Query,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -14,17 +15,18 @@ import {
   ApiResponse,
   ApiBearerAuth,
 } from '@nestjs/swagger';
-import { AuthService } from './auth.service';
-import { LoginDto, RegisterDto, AuthResponseDto } from './dto';
 import { JwtGuard } from './guard';
+import { AuthService } from './auth.service';
+import { LoginDto, RegisterDto, AuthResponseDto, RegisterCompanyDto } from './dto';
 
 @ApiTags('Authentication')
 @Controller('auth')
 export class AuthController {
   constructor(private authService: AuthService) {}
 
-  @Post('register')
-  @ApiOperation({ summary: 'Register a new user' })
+  @Post('register/talent')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Register a new talent' })
   @ApiResponse({
     status: 201,
     description: 'User successfully registered',
@@ -32,8 +34,22 @@ export class AuthController {
   })
   @ApiResponse({ status: 400, description: 'Bad Request' })
   @ApiResponse({ status: 409, description: 'User already exists' })
-  async register(@Body() registerDto: RegisterDto) {
-    return this.authService.register(registerDto);
+  async registerTalent(@Body() registerDto: RegisterDto) {
+    return this.authService.registerTalent(registerDto);
+  }
+  
+  @Post('register/company-user')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Register a new company user' })
+  @ApiResponse({
+    status: 201,
+    description: 'User successfully registered',
+    type: AuthResponseDto,
+  })
+  @ApiResponse({ status: 400, description: 'Bad Request' })
+  @ApiResponse({ status: 409, description: 'User already exists' })
+  async registerCompany(@Body() registerDto: RegisterCompanyDto) {
+    return this.authService.registerCompany(registerDto);
   }
 
   @Post('login')
@@ -66,5 +82,27 @@ export class AuthController {
   @ApiResponse({ status: 200, description: 'User profile retrieved' })
   async getProfile(@Request() req) {
     return req.user;
+  }
+
+  @Post('send-verification-email')
+  @UseGuards(JwtGuard)
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Send email verification' })
+  @ApiResponse({ status: 200, description: 'Verification email sent successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 409, description: 'Email already verified' })
+  async sendVerificationEmail(@Body() body: { email: string }) {
+    return this.authService.sendVerificationEmail(body.email);
+  }
+
+  @Post('verify-email')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Verify email address' })
+  @ApiResponse({ status: 200, description: 'Email verified successfully' })
+  @ApiResponse({ status: 401, description: 'Invalid or expired token' })
+  @ApiResponse({ status: 409, description: 'Email already verified' })
+  async verifyEmail(@Query('token') token: string) {
+    return this.authService.verifyEmail(token);
   }
 }
