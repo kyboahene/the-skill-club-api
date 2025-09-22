@@ -7,7 +7,7 @@ export class AssessmentsService {
   constructor(private prisma: PrismaService) {}
 
   async getAllAssessments() {
-    return this.prisma.assessment.findMany({
+    return this.prisma.talentAssessment.findMany({
       include: {
         skill: true,
       },
@@ -38,7 +38,7 @@ export class AssessmentsService {
       };
     }
 
-    const assessments = await this.prisma.assessment.findMany({
+    const assessments = await this.prisma.talentAssessment.findMany({
       where,
       include: {
         skill: true,
@@ -56,7 +56,7 @@ export class AssessmentsService {
   }
 
   async getAssessment(id: string) {
-    const assessment = await this.prisma.assessment.findUnique({
+    const assessment = await this.prisma.talentAssessment.findUnique({
       where: { id },
       include: {
         skill: true,
@@ -94,7 +94,7 @@ export class AssessmentsService {
       skillId = skillRecord?.id;
     }
 
-    return this.prisma.assessment.create({
+    return this.prisma.talentAssessment.create({
       data: {
         ...assessmentData,
         skillId,
@@ -116,7 +116,7 @@ export class AssessmentsService {
       skillId = skillRecord?.id;
     }
 
-    const assessment = await this.prisma.assessment.findUnique({
+    const assessment = await this.prisma.talentAssessment.findUnique({
       where: { id },
     });
 
@@ -124,7 +124,7 @@ export class AssessmentsService {
       throw new NotFoundException(`Assessment with ID ${id} not found`);
     }
 
-    return this.prisma.assessment.update({
+    return this.prisma.talentAssessment.update({
       where: { id },
       data: {
         ...assessmentData,
@@ -137,7 +137,7 @@ export class AssessmentsService {
   }
 
   async deleteAssessment(id: string) {
-    const assessment = await this.prisma.assessment.findUnique({
+    const assessment = await this.prisma.talentAssessment.findUnique({
       where: { id },
     });
 
@@ -145,7 +145,7 @@ export class AssessmentsService {
       throw new NotFoundException(`Assessment with ID ${id} not found`);
     }
 
-    await this.prisma.assessment.delete({
+    await this.prisma.talentAssessment.delete({
       where: { id },
     });
 

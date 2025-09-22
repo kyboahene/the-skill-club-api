@@ -3,7 +3,7 @@ import {
   NotFoundException,
   ForbiddenException,
 } from "@nestjs/common";
-import { Prisma } from "@prisma/client";
+import { Prisma, TestCategory } from "@prisma/client";
 import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
 
 import { PrismaService } from "@/prisma/prisma.service";
@@ -29,10 +29,20 @@ export class TestsService {
       }
 
       const test = await this.prisma.test.create({
-        data: createTestDto,
+        data: {
+          category: createTestDto.category,
+          createdBy: createTestDto.createdBy,
+          description: createTestDto.description,
+          languageCodes: createTestDto.languageCodes,
+          title: createTestDto.title,
+          validated: createTestDto.validated,
+          version: createTestDto.version,
+          tags: createTestDto.tags,
+          durationSeconds: createTestDto.durationSeconds,
+          companyId: createTestDto.companyId,
+        },
         include: {
           questions: true,
-          testConfigs: true,
         }
       });
 
@@ -48,36 +58,33 @@ export class TestsService {
   }
 
   async findTests(
+    companyId: string,
     page: number,
     pageSize: number,
     all?: boolean,
-    filters?: GetTestsDto
+    category?: string,
+    search?: string
   ) {
     const where: Prisma.TestWhereInput = {};
     
-    if (filters?.category) {
-      where.category = filters.category;
+    if (category) {
+      where.category = category as TestCategory;
     }
     
-    if (filters?.createdBy) {
-      where.createdBy = filters.createdBy;
+    if (companyId) {
+      where.createdBy = companyId;
     }
 
-    if (filters?.validated !== undefined) {
-      where.validated = filters.validated;
-    }
-
-    if (filters?.search) {
+    if (search) {
       where.OR = [
-        { title: { contains: filters.search, mode: 'insensitive' } },
-        { description: { contains: filters.search, mode: 'insensitive' } },
-        { tags: { has: filters.search } }
+        { title: { contains: search, mode: 'insensitive' } },
+        { description: { contains: search, mode: 'insensitive' } },
+        { tags: { has: search } }
       ];
     }
 
     const include: Prisma.TestInclude = {
       questions: true,
-      testConfigs: true,
     };
 
     return await this.paginationService.paginate("test", {
@@ -87,11 +94,6 @@ export class TestsService {
       include,
       where
     });
-  }
-
-  // Legacy method for backward compatibility
-  async getTests() {
-    return this.findTests(1, 10, true);
   }
 
   async getTestById(testId: string) {
@@ -104,7 +106,6 @@ export class TestsService {
         where: { id: testId },
         include: {
           questions: true,
-          testConfigs: true,
         }
       });
 
@@ -159,7 +160,6 @@ export class TestsService {
       },
       include: {
         questions: true,
-        testConfigs: true,
       }
     });
     
@@ -176,7 +176,6 @@ export class TestsService {
         where: { createdBy: companyId },
         include: {
           questions: true,
-          testConfigs: true,
         },
         orderBy: { createdAt: 'desc' }
       });
@@ -203,7 +202,6 @@ export class TestsService {
         },
         include: {
           questions: true,
-          testConfigs: true,
         },
         orderBy: { createdAt: 'desc' }
       });
@@ -224,7 +222,6 @@ export class TestsService {
         where: { validated: true },
         include: {
           questions: true,
-          testConfigs: true,
         },
         orderBy: { createdAt: 'desc' }
       });
@@ -246,7 +243,6 @@ export class TestsService {
         data: updateTestDto,
         include: {
           questions: true,
-          testConfigs: true,
         }
       });
 

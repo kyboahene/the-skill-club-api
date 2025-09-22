@@ -19,9 +19,9 @@ enum UserStatus {
 }
 
 enum UserType {
-  TALENT           // Job seekers, students, graduates
-  COMPANY_USER     // Company employees (recruiters, HR, admins)
-  PLATFORM_ADMIN   // Platform administrators (can access multiple companies)
+  TALENT // Job seekers, students, graduates
+  COMPANY_USER // Company employees (recruiters, HR, admins)
+  PLATFORM_ADMIN // Platform administrators (can access multiple companies)
 }
 
 enum Gender {
@@ -37,9 +37,9 @@ enum Profession {
 }
 
 enum RoleContext {
-  PLATFORM    // Global platform roles (super_admin, platform_admin)
-  COMPANY     // Company-specific roles (company_admin, recruiter, hr_manager)
-  TALENT      // Talent-specific roles (verified_talent, premium_talent)
+  PLATFORM // Global platform roles (super_admin, platform_admin)
+  COMPANY // Company-specific roles (company_admin, recruiter, hr_manager)
+  TALENT // Talent-specific roles (verified_talent, premium_talent)
 }
 
 enum AcademicYear {
@@ -271,7 +271,7 @@ model EmailVerificationToken {
   expiresAt DateTime
   createdAt DateTime @default(now())
 
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("email_verification_tokens")
 }
@@ -283,7 +283,7 @@ model PasswordResetToken {
   expiresAt DateTime
   createdAt DateTime @default(now())
 
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("password_reset_tokens")
 }
@@ -291,13 +291,13 @@ model PasswordResetToken {
 model AuthLog {
   id        String   @id @default(cuid())
   userId    String
-  event     String   // 'login_success', 'login_failed', 'email_verified', etc.
+  event     String // 'login_success', 'login_failed', 'email_verified', etc.
   details   String?
   ipAddress String?
   userAgent String?
   createdAt DateTime @default(now())
 
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("auth_logs")
 }
@@ -315,38 +315,38 @@ model User {
   lastLoginAt     DateTime?
   emailVerified   Boolean    @default(false)
   emailVerifiedAt DateTime?
-  preferences     Json?      // User preferences, settings
-  
+  preferences     Json? // User preferences, settings
+
   // SIMPLIFIED: Single company relationship
-  companyId       String?    // NULL for talents, required for company users
-  roles          Role[]
-  
-  createdAt       DateTime   @default(now())
-  updatedAt       DateTime   @updatedAt
+  companyId String? // NULL for talents, required for company users
+  roles     Role[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Relations
-  company                  Company?            @relation("CompanyUsers", fields: [companyId], references: [id], onDelete: SetNull)
-  talent                   Talent?
-  
+  company Company? @relation("CompanyUsers", fields: [companyId], references: [id], onDelete: SetNull)
+  talent  Talent?
+
   // Transfer history
-  transfersFrom            CompanyTransfer[]   @relation("TransferFrom")
-  initiatedTransfers       CompanyTransfer[]   @relation("TransferInitiator")
-  
+  transfersFrom      CompanyTransfer[] @relation("TransferFrom")
+  initiatedTransfers CompanyTransfer[] @relation("TransferInitiator")
+
   // Activity Relations
-  sentMessages             Message[]               @relation("SentMessages")
-  receivedMessages         Message[]               @relation("ReceivedMessages")
-  createdJobs              Job[]                   @relation("CreatedJobs")
-  createdTests             Test[]                  @relation("CreatedTests")
-  createdAssessments       CompanyAssessment[]     @relation("CreatedAssessments")
-  sentCandidateInvitations CandidateInvitation[]   @relation("SentInvitations")
-  createdEmailTemplates    EmailTemplate[]         @relation("CreatedEmailTemplates")
-  createdEmailCampaigns    EmailCampaign[]         @relation("CreatedEmailCampaigns")
+  sentMessages             Message[]             @relation("SentMessages")
+  receivedMessages         Message[]             @relation("ReceivedMessages")
+  createdJobs              Job[]                 @relation("CreatedJobs")
+  createdTests             Test[]                @relation("CreatedTests")
+  createdAssessments       CompanyAssessment[]   @relation("CreatedAssessments")
+  sentCandidateInvitations CandidateInvitation[] @relation("SentInvitations")
+  createdEmailTemplates    EmailTemplate[]       @relation("CreatedEmailTemplates")
+  createdEmailCampaigns    EmailCampaign[]       @relation("CreatedEmailCampaigns")
   assessmentProgress       AssessmentProgress[]
-  
+
   // Auth relations
-  emailVerificationToken   EmailVerificationToken?
-  passwordResetToken       PasswordResetToken?
-  authLogs                 AuthLog[]
+  emailVerificationToken EmailVerificationToken?
+  passwordResetToken     PasswordResetToken?
+  authLogs               AuthLog[]
 
   @@map("users")
 }
@@ -356,11 +356,11 @@ model Role {
   name        String
   description String?
   context     RoleContext? // NEW: Defines where this role applies
-  contextId   String?      // NEW: ID of the context (companyId for company roles)
+  contextId   String? // NEW: ID of the context (companyId for company roles)
   isSystem    Boolean      @default(false) // NEW: System roles vs custom roles
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
-  
+
   // Relations
   users       User[]
   permissions Permission[]
@@ -373,36 +373,36 @@ model Permission {
   id          String   @id @default(uuid())
   name        String   @unique
   description String?
-  category    String?  // Group permissions (e.g., "jobs", "assessments", "users")
+  category    String? // Group permissions (e.g., "jobs", "assessments", "users")
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  
+
   // Relations
-  roles       Role[]
+  roles Role[]
 
   @@map("permissions")
 }
 
 // Company Transfer History (replaces CompanyMembership)
 model CompanyTransfer {
-  id             String         @id @default(cuid())
-  userId         String         @unique
-  fromCompanyId  String?        // NULL if first company join
-  toCompanyId    String?        // NULL if leaving platform
-  fromRole       CompanyRole?
-  toRole         CompanyRole?
-  reason         TransferReason
-  notes          String?
-  initiatedBy    String         // Who initiated the transfer
-  approvedBy     String?        // Who approved it (for some transfer types)
-  transferredAt  DateTime       @default(now())
-  createdAt      DateTime       @default(now())
+  id            String         @id @default(cuid())
+  userId        String         @unique
+  fromCompanyId String? // NULL if first company join
+  toCompanyId   String? // NULL if leaving platform
+  fromRole      CompanyRole?
+  toRole        CompanyRole?
+  reason        TransferReason
+  notes         String?
+  initiatedBy   String // Who initiated the transfer
+  approvedBy    String? // Who approved it (for some transfer types)
+  transferredAt DateTime       @default(now())
+  createdAt     DateTime       @default(now())
 
   // Relations
-  user           User           @relation("TransferFrom", fields: [userId], references: [id], onDelete: Cascade)
-  fromCompany    Company?       @relation("TransfersFrom", fields: [fromCompanyId], references: [id], onDelete: SetNull)
-  toCompany      Company?       @relation("TransfersTo", fields: [toCompanyId], references: [id], onDelete: SetNull)
-  initiator      User           @relation("TransferInitiator", fields: [initiatedBy], references: [id], onDelete: Cascade)
+  user        User     @relation("TransferFrom", fields: [userId], references: [id], onDelete: Cascade)
+  fromCompany Company? @relation("TransfersFrom", fields: [fromCompanyId], references: [id], onDelete: SetNull)
+  toCompany   Company? @relation("TransfersTo", fields: [toCompanyId], references: [id], onDelete: SetNull)
+  initiator   User     @relation("TransferInitiator", fields: [initiatedBy], references: [id], onDelete: Cascade)
 
   @@map("company_transfers")
 }
@@ -470,10 +470,10 @@ model Skill {
   updatedAt   DateTime @updatedAt
 
   // Relations
-  talents     TalentSkill[]
-  resources   Resource[]
-  jobs        JobSkill[]
-  assessments Assessment[]
+  talents           TalentSkill[]
+  resources         Resource[]
+  jobs              JobSkill[]
+  talentAssessments TalentAssessment[]
 
   @@map("skills")
 }
@@ -554,40 +554,41 @@ model Certificate {
 
 // Company model - SIMPLIFIED
 model Company {
-  id                   String                @id @default(cuid())
-  name                 String
-  slug                 String?               @unique
-  logo                 String?
-  type                 String?
-  market               String?
-  city                 String?
-  country              String?
-  totalRaised          String?
-  website              String?
-  overview             String?
-  address              String?
-  linkedIn             String?
-  twitter              String?
-  foundedDate          DateTime?
-  companySize          String?
-  remotePolicy         String?
-  isActive             Boolean               @default(true)
-  integrationSettings  Json?
-  createdAt            DateTime              @default(now())
-  updatedAt            DateTime              @updatedAt
+  id                  String    @id @default(cuid())
+  name                String
+  slug                String?   @unique
+  logo                String?
+  type                String?
+  market              String?
+  city                String?
+  country             String?
+  totalRaised         String?
+  website             String?
+  overview            String?
+  address             String?
+  linkedIn            String?
+  twitter             String?
+  foundedDate         DateTime?
+  companySize         String?
+  remotePolicy        String?
+  isActive            Boolean   @default(true)
+  integrationSettings Json?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
 
   // Relations - SIMPLIFIED
-  users                User[]                @relation("CompanyUsers")
-  transfersFrom        CompanyTransfer[]     @relation("TransfersFrom")
-  transfersTo          CompanyTransfer[]     @relation("TransfersTo")
-  jobs                 Job[]
-  assessments          CompanyAssessment[]
-  invitations          CandidateInvitation[]
-  emailTemplates       EmailTemplate[]
-  emailCampaigns       EmailCampaign[]
-  applications         Application[]
-  rankings             CandidateRanking[]
-  activities           RecentActivity[]
+  companyMembers User[]                @relation("CompanyUsers")
+  transfersFrom  CompanyTransfer[]     @relation("TransfersFrom")
+  transfersTo    CompanyTransfer[]     @relation("TransfersTo")
+  jobs           Job[]
+  assessments    CompanyAssessment[]
+  invitations    CandidateInvitation[]
+  emailTemplates EmailTemplate[]
+  emailCampaigns EmailCampaign[]
+  applications   Application[]
+  rankings       CandidateRanking[]
+  activities     RecentActivity[]
+  tests          Test[] // Opposite relation for Test.company
 
   @@map("companies")
 }
@@ -747,7 +748,7 @@ model Event {
 }
 
 // Assessment Models (unchanged)
-model Assessment {
+model TalentAssessment {
   id           String   @id @default(cuid())
   skillId      String?
   question     String
@@ -761,7 +762,7 @@ model Assessment {
   skill    Skill?               @relation(fields: [skillId], references: [id], onDelete: SetNull)
   progress AssessmentProgress[]
 
-  @@map("assessments")
+  @@map("talent_assessments")
 }
 
 model AssessmentProgress {
@@ -778,8 +779,8 @@ model AssessmentProgress {
   updatedAt            DateTime  @updatedAt
 
   // Relations
-  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  assessment Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assessment TalentAssessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
 
   @@unique([userId, assessmentId])
   @@map("assessment_progress")
@@ -794,6 +795,7 @@ model Test {
   languageCodes   String[]
   validated       Boolean      @default(false)
   createdBy       String
+  companyId       String
   version         Int          @default(1)
   tags            String[]
   durationSeconds Int?
@@ -801,11 +803,31 @@ model Test {
   updatedAt       DateTime     @updatedAt
 
   // Relations
-  creator     User         @relation("CreatedTests", fields: [createdBy], references: [id], onDelete: Cascade)
-  questions   Question[]
-  testConfigs TestConfig[]
+  creator        User             @relation("CreatedTests", fields: [createdBy], references: [id], onDelete: Cascade)
+  company        Company?         @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  questions      Question[]
+  AssessmentTest AssessmentTest[]
 
   @@map("tests")
+}
+
+model AssessmentTest {
+  id           String   @id @default(cuid())
+  assessmentId String
+  testId       String
+  order        Int? // Order of tests in the assessment
+  isRequired   Boolean  @default(true)
+  weightage    Float?
+  timeLimit    Int?
+  createdAt    DateTime @default(now())
+
+  // Relations
+  TestConfig TestConfig?
+  assessment CompanyAssessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  test       Test              @relation(fields: [testId], references: [id], onDelete: Cascade)
+
+  @@unique([assessmentId, testId])
+  @@map("assessment_tests")
 }
 
 model Question {
@@ -833,19 +855,17 @@ model Question {
 }
 
 model TestConfig {
-  id            String   @id @default(cuid())
-  testId        String
-  assessmentId  String
-  questionLimit Int?
-  timeLimit     Int? // Time limit in minutes
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id               String   @id @default(cuid())
+  assessmentTestId String
+  questionLimit    Int?
+  timeLimit        Int? // Time limit in minutes
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   // Relations
-  test       Test              @relation(fields: [testId], references: [id], onDelete: Cascade)
-  assessment CompanyAssessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  assessmentTest AssessmentTest @relation(fields: [assessmentTestId], references: [id], onDelete: Cascade)
 
-  @@unique([testId, assessmentId])
+  @@unique([assessmentTestId])
   @@map("test_configs")
 }
 
@@ -854,11 +874,8 @@ model CompanyAssessment {
   title              String
   description        String?
   ownerCompanyId     String
-  testIds            String[]
   maxTests           Int       @default(5)
   maxCustomQuestions Int       @default(20)
-  brandingSettings   Json?
-  antiCheatSettings  Json?
   languageCodes      String[]
   timeLimitSeconds   Int?
   timeLimitMinutes   Int?
@@ -871,12 +888,50 @@ model CompanyAssessment {
   // Relations
   company           Company               @relation(fields: [ownerCompanyId], references: [id], onDelete: Cascade)
   creator           User?                 @relation("CreatedAssessments", fields: [createdBy], references: [id], onDelete: SetNull)
-  testConfigs       TestConfig[]
   customQuestions   Question[]
   candidateSessions CandidateSession[]
   invitations       CandidateInvitation[]
+  assessmentTests   AssessmentTest[]
+  brandingSettings  BrandingSettings?
+  antiCheatSettings AntiCheatSettings?
 
   @@map("company_assessments")
+}
+
+model BrandingSettings {
+  id                 String   @id @default(cuid())
+  companyAssessmentId String   @unique
+  logoUrl            String?
+  themeColorHex      String?
+  fontFamily         String?
+  welcomeText        String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  // Relations
+  companyAssessment CompanyAssessment @relation(fields: [companyAssessmentId], references: [id], onDelete: Cascade)
+
+  @@map("branding_settings")
+}
+
+model AntiCheatSettings {
+  id                     String   @id @default(cuid())
+  companyAssessmentId    String   @unique
+  blockCopyPaste         Boolean  @default(false)
+  disableRightClick      Boolean  @default(false)
+  detectWindowFocus      Boolean  @default(false)
+  detectTabSwitching     Boolean  @default(false)
+  enableFullscreen       Boolean  @default(false)
+  preventScreenCapture   Boolean  @default(false)
+  enableScreenRecording  Boolean  @default(false)
+  screenRecordingInterval Int?     // Interval in seconds
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  // Relations
+  companyAssessment CompanyAssessment @relation(fields: [companyAssessmentId], references: [id], onDelete: Cascade)
+
+  @@map("anti_cheat_settings")
 }
 
 // Candidate Management Models (unchanged)

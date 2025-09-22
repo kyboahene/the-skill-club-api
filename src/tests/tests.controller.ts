@@ -10,6 +10,8 @@ import { Serialize } from '@/shared/interceptors/serializer.interceptor';
 import { CreateTestDto, UpdateTestDto, GetTestsDto } from './dto';
 import { PaginatedResponseDto } from '@/pagination/pagination.entity';
 import { TestWithRelationEntity, TestEntity } from './entities';
+import { GetUser } from '@/auth/decorator/get-user.decorator';
+import { CompanyEntity } from '@/companies/entities';
 
 @ApiTags('Tests')
 @ApiBearerAuth()
@@ -50,12 +52,14 @@ export class TestsController {
     description: 'Tests cannot be retrieved. Try again!'
   })
   findAll(
+    @GetUser("company") company: CompanyEntity,
     @Query("pageNum") page: string = "1",
     @Query("pageSize") pageSize: string = "10",
     @Query("all") all: string = "false",
-    @Query() filters: GetTestsDto
+    @Query("category") category?: string,
+    @Query("search") search?: string
   ) {
-    return this.testsService.findTests(+page, +pageSize, JSON.parse(all), filters);
+    return this.testsService.findTests(company.id, +page, +pageSize, JSON.parse(all), category, search);
   }
 
   @Auth(['get_test', 'get_test_global'])

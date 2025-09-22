@@ -29,12 +29,12 @@ export class EnhancedPermissionGuard implements CanActivate {
     }
 
     // Check company membership if required
-    if (authOptions.requireCompanyMembership && companyId) {
-      const isMember = await this.roleService.isCompanyMember(user.id, companyId);
-      if (!isMember) {
-        throw new ForbiddenException('User is not a member of this company');
-      }
-    }
+    // if (authOptions.requireCompanyMembership && companyId) {
+    //   const isMember = await this.roleService.isCompanyMember(user.id, companyId);
+    //   if (!isMember) {
+    //     throw new ForbiddenException('User is not a member of this company');
+    //   }
+    // }
 
     // Check permissions if specified
     if (authOptions.permissions && authOptions.permissions.length > 0) {

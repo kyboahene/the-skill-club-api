@@ -22,8 +22,8 @@ import { TalentsModule } from './talents/talents.module';
 import { JobsModule } from './jobs/jobs.module';
 import { CandidateSessionsModule } from './candidate-sessions/candidate-sessions.module';
 import { CandidateManagementModule } from './candidate-management/candidate-management.module';
-import { TestBankModule } from './test-bank/test-bank.module';
 import { TestsModule } from './tests/tests.module';
+import { SkillsModule } from './skills/skills.module';
 
 @Module({
   imports: [
@@ -63,9 +63,9 @@ import { TestsModule } from './tests/tests.module';
     EventsModule,
     TalentsModule,
     JobsModule,
+    SkillsModule,
     CandidateSessionsModule,
     CandidateManagementModule,
-    TestBankModule,
     TestsModule
   ],
   controllers: [AppController],

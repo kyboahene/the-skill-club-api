@@ -1,9 +1,10 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { CompanyEntity } from './company.entity';
+import { UserEntity } from '@/users/entities/user.entity';
 
 export class CompanyWithRelationEntity extends CompanyEntity {
   @ApiProperty({ type: [Object], required: false })
-  users?: any[];
+  companyUsers?: UserEntity[];
 
   @ApiProperty({ type: [Object], required: false })
   jobs?: any[];
@@ -31,9 +32,4 @@ export class CompanyWithRelationEntity extends CompanyEntity {
     invitations?: number;
     applications?: number;
   };
-
-  constructor(partial: Partial<CompanyWithRelationEntity>) {
-    super(partial);
-    Object.assign(this, partial);
-  }
 }

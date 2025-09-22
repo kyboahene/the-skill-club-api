@@ -126,7 +126,8 @@ async function main() {
       email: 'admin@techcorp.com',
       name: 'Company Admin',
       password: companyAdminPassword,
-      emailVerified: true
+      emailVerified: true,
+      companyId: sampleCompany.id
     },
   });
 
@@ -170,26 +171,6 @@ async function main() {
     }
   });
 
-  // Create company membership if it doesn't exist
-  const existingMembership = await prisma.companyMembership.findUnique({
-    where: {
-      userId_companyId: {
-        userId: companyAdminUser.id,
-        companyId: sampleCompany.id
-      }
-    }
-  });
-
-  if (!existingMembership) {
-    await prisma.companyMembership.create({
-      data: {
-        userId: companyAdminUser.id,
-        companyId: sampleCompany.id,
-        joinedAt: new Date(),
-        isActive: true
-      },
-    });
-  }
 
   console.log('✅ Database seeded successfully!');
   console.log('👤 Super Admin: admin@example.com / admin123');

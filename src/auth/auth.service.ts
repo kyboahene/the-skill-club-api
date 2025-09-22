@@ -159,6 +159,7 @@ export class AuthService {
     const user = await this.prisma.user.findUnique({
       where: { email: dto.email },
       include: {
+        company: true,
         roles: {
           include: {
             permissions: true 
@@ -183,9 +184,7 @@ export class AuthService {
     if (user.status === 'INACTIVE') {
       throw new ForbiddenException('Account is deactivated');
     }
-    
-    console.log(user.emailVerified);
-    // Check if email is verified
+        // Check if email is verified
     if (!user.emailVerified) {
       throw new ForbiddenException(
         'Please verify your email address before logging in',
@@ -222,7 +221,7 @@ export class AuthService {
       throw new ForbiddenException('Access Denied');
     }
 
-    const tokens = await this.generateTokens(user.id, user.email);
+    const tokens = await this.generateTokens(user.id, user.email);``
     await this.updateRefreshToken(user.id, tokens.refreshToken);
 
     return tokens;
@@ -244,7 +243,6 @@ export class AuthService {
       'email_verification',
     );
 
-    // Create verification URL
     const verificationUrl = `${this.config.get(
       'FRONTEND_URL',
     )}/auth/verify-email?token=${verificationToken.accessToken}`;
@@ -261,16 +259,16 @@ export class AuthService {
   }
 
   async verifyEmail(token: string) {
+
     try {
-      // Verify the token
       const payload = await this.verifyToken(token);
 
-      // Check if it's an email verification token
+      console.log(payload, "payload");
+
       if (payload.type !== 'email_verification') {
         throw new UnauthorizedException('Invalid verification token');
       }
 
-      // Find the user
       const user = await this.prisma.user.findUnique({
         where: { id: payload.sub },
       });
@@ -283,17 +281,18 @@ export class AuthService {
         throw new ConflictException('Email is already verified');
       }
 
-      // Update user as verified
-      await this.prisma.user.update({
+      const updatedUser = await this.prisma.user.update({
         where: { id: user.id },
         data: {
           emailVerified: true,
           emailVerifiedAt: new Date(),
           status: UserStatus.ACTIVE,
         },
+        include: { company: true, talent: true },
       });
 
-      return user;
+      return updatedUser
+
     } catch (error) {
       if (
         error.name === 'JsonWebTokenError' ||

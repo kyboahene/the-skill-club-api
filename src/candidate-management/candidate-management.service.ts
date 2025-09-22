@@ -167,7 +167,7 @@ export class CandidateManagementService {
     }
 
     // Verify assessments exist
-    const assessments = await this.prisma.assessment.findMany({
+    const assessments = await this.prisma.talentAssessment.findMany({
       where: {
         id: {
           in: assessmentIds,

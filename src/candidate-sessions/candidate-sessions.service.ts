@@ -122,7 +122,7 @@ export class CandidateSessionsService {
     }
 
     // Verify assessment exists
-    const assessment = await this.prisma.assessment.findUnique({
+    const assessment = await this.prisma.talentAssessment.findUnique({
       where: { id: assessmentId },
     });
 

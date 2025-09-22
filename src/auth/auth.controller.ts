@@ -85,7 +85,6 @@ export class AuthController {
   }
 
   @Post('send-verification-email')
-  @UseGuards(JwtGuard)
   @ApiBearerAuth()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Send email verification' })
@@ -96,7 +95,7 @@ export class AuthController {
     return this.authService.sendVerificationEmail(body.email);
   }
 
-  @Post('verify-email')
+  @Get('verify-email')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Verify email address' })
   @ApiResponse({ status: 200, description: 'Email verified successfully' })

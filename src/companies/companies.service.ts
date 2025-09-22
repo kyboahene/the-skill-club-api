@@ -63,7 +63,7 @@ export class CompaniesService {
     }
 
     const include: Prisma.CompanyInclude = {
-      memberships: true,
+      companyMembers: true,
     };
 
     return await this.paginationService.paginate("company", {
@@ -95,11 +95,7 @@ export class CompaniesService {
     const company = await this.prisma.company.findUnique({
       where: { id },
       include: {
-        memberships: {
-          include: {
-            user: true,
-          },
-        },
+        companyMembers: true,
         jobs: {
           take: 5,
           orderBy: {
@@ -112,13 +108,6 @@ export class CompaniesService {
             createdAt: 'desc',
           },
         },
-        _count: {
-          select: {
-            jobs: true,
-            assessments: true,
-            memberships: true,
-          },
-        },
       },
     });
 
@@ -129,37 +118,6 @@ export class CompaniesService {
     return company;
   }
 
-  async getCompanyUsers(companyId: string) {
-    // Verify company exists using the getCompany method
-    await this.getCompany(companyId);
-
-    return this.prisma.companyMembership.findMany({
-      where: { companyId },
-      include: {
-        user: {
-          select: {
-            id: true,
-            email: true,
-            name: true,
-            phone: true,
-            status: true,
-            createdAt: true,
-          },
-        },
-        company: {
-          select: {
-            id: true,
-            name: true,
-            logo: true,
-          },
-        },
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    });
-  }
-
   async createCompany(createCompanyDto: CreateCompanyDto) {
     try {
       return await this.prisma.company.create({
@@ -167,19 +125,8 @@ export class CompaniesService {
           ...createCompanyDto,
         },
         include: {
-          memberships: {
-            include: {
-              user: true,
-            },
+          companyMembers: true,
           },
-          _count: {
-            select: {
-              jobs: true,
-              assessments: true,
-              memberships: true,
-            },
-          },
-        },
       });
     } catch (error) {
       if (error instanceof PrismaClientKnownRequestError) {
@@ -191,59 +138,6 @@ export class CompaniesService {
     }
   }
 
-  async createCompanyWithOwner(createCompanyWithOwnerDto: CreateCompanyWithOwnerDto) {
-    const { userId, email, companyName, userName } = createCompanyWithOwnerDto;
-
-    // Check if user already exists
-    const existingUser = await this.prisma.user.findUnique({
-      where: { id: userId },
-    });
-
-    if (existingUser) {
-      throw new ConflictException('User already exists');
-    }
-
-    return this.prisma.$transaction(async (prisma) => {
-      // Create company
-      const company = await prisma.company.create({
-        data: {
-          name: companyName,
-        },
-      });
-
-      // Create user
-      const user = await prisma.user.create({
-        data: {
-          id: userId,
-          email,
-          name: userName,
-          roles: {
-            connect: {
-              id: 'company_user',
-            },
-          },
-          status: 'ACTIVE',
-        },
-      });
-
-      // Create company user relationship
-      const companyUser = await prisma.companyMembership.create({
-        data: {
-          userId: user.id,
-          companyId: company.id,
-          isActive: true,
-        },
-      });
-
-      return {
-        companyId: company.id,
-        ownerId: user.id,
-        company,
-        user,
-        companyUser,
-      };
-    });
-  }
 
   async addUserToCompany(addCompanyUserDto: AddCompanyUserDto) {
     const { companyId, email, name, role, invitedBy } = addCompanyUserDto;
@@ -264,10 +158,9 @@ export class CompaniesService {
 
     // Check if user is already part of the company
     if (user) {
-      const existingCompanyUser = await this.prisma.companyMembership.findFirst({
+      const existingCompanyUser = await this.prisma.user.findFirst({
         where: {
-          userId: user.id,
-          companyId,
+          companyId: companyId,
         },
       });
 
@@ -294,12 +187,15 @@ export class CompaniesService {
       }
 
       // Create company user relationship
-      const companyUser = await prisma.companyMembership.create({
+      const companyUser = await prisma.user.update({
+        where: { id: user.id },
         data: {
           companyId,
-          invitedBy,
-          userId: user.id,
-          isActive: false,
+          roles: {
+            connect: {
+              id: 'company_admin',
+            },
+          },
         },
       });
 
@@ -327,8 +223,8 @@ export class CompaniesService {
   }
 
   async updateCompanyUser(userId: string, updateCompanyUserDto: UpdateCompanyUserDto) {
-    const companyUser = await this.prisma.companyMembership.findFirst({
-      where: { userId },
+    const companyUser = await this.prisma.user.findFirst({
+      where: { id: userId },
     });
 
     if (!companyUser) {
@@ -350,26 +246,25 @@ export class CompaniesService {
       updateData.permissions = updateCompanyUserDto.permissions;
     }
 
-    return this.prisma.companyMembership.update({
+    return this.prisma.user.update({
       where: { id: companyUser.id },
       data: updateData,
       include: {
-        user: true,
         company: true,
       },
     });
   }
 
   async removeCompanyUser(userId: string) {
-    const companyUser = await this.prisma.companyMembership.findFirst({
-      where: { userId },
+    const companyUser = await this.prisma.user.findFirst({
+      where: { id:userId },
     });
 
     if (!companyUser) {
       throw new NotFoundException(`Company user with user ID ${userId} not found`);
     }
 
-    await this.prisma.companyMembership.delete({
+    await this.prisma.user.delete({
       where: { id: companyUser.id },
     });
 

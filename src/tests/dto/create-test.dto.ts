@@ -12,6 +12,14 @@ import {
 } from 'class-validator';
 
 export class CreateTestDto {
+
+  @ApiProperty({
+    description: 'Company ID',
+    example: 'clxxxxx'
+  })
+  @IsString()
+  companyId: string;
+
   @ApiProperty({
     description: 'Title of the test',
     example: 'JavaScript Fundamentals Test'
