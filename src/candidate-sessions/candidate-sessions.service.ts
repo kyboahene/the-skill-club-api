@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { PaginationService } from '../pagination/pagination.service';
 import {
   CreateCandidateSessionDto,
   UpdateCandidateSessionDto,
@@ -9,7 +10,10 @@ import {
 
 @Injectable()
 export class CandidateSessionsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private paginationService: PaginationService,
+  ) {}
 
   async getCandidateSessions(query: GetCandidateSessionsDto) {
     const { limit = 10, candidateId, assessmentId, companyId, status } = query;
@@ -195,5 +199,123 @@ export class CandidateSessionsService {
         scoreSummary: true,
       },
     });
+  }
+
+  async getAssessmentCandidateSessions(filters: {
+    companyId: string;
+    page: number;
+    pageSize: number;
+    search?: string;
+    all?: boolean;
+  }) {
+    // First, get all candidate sessions for the company
+    const whereClause: any = {
+      assessment: {
+        ownerCompanyId: filters.companyId,
+      },
+    };
+
+    // Add search filter if provided
+    if (filters.search) {
+      whereClause.OR = [
+        {
+          candidateName: {
+            contains: filters.search,
+            mode: 'insensitive',
+          },
+        },
+        {
+          candidateEmail: {
+            contains: filters.search,
+            mode: 'insensitive',
+          },
+        },
+      ];
+    }
+
+    // Get all sessions first to aggregate them
+    const allSessions = await this.prisma.candidateSession.findMany({
+      where: whereClause,
+      include: {
+        assessment: true,
+      },
+      orderBy: {
+        updatedAt: 'desc',
+      },
+    });
+
+    // Aggregate sessions by candidate email
+    const candidateMap = new Map();
+
+    allSessions.forEach((session) => {
+      const key = session.candidateEmail;
+      
+      if (!candidateMap.has(key)) {
+        candidateMap.set(key, {
+          candidateEmail: session.candidateEmail,
+          candidateName: session.candidateName,
+          candidatePhone: session.candidatePhone,
+          assessments: [],
+          totalAssessments: 0,
+          completedAssessments: 0,
+          inProgressAssessments: 0,
+          abandonedAssessments: 0,
+          expiredAssessments: 0,
+          lastActivity: session.updatedAt,
+          createdAt: session.createdAt,
+          updatedAt: session.updatedAt,
+        });
+      }
+
+      const candidate = candidateMap.get(key);
+      
+      // Add assessment object if not already included
+      const existingAssessment = candidate.assessments.find(
+        (assessment: any) => assessment.id === session.assessmentId
+      );
+      
+      if (!existingAssessment) {
+        candidate.assessments.push(session.assessment);
+        candidate.totalAssessments += 1;
+      }
+
+      // Count status
+      switch (session.status) {
+        case 'COMPLETED':
+          candidate.completedAssessments += 1;
+          break;
+        case 'IN_PROGRESS':
+          candidate.inProgressAssessments += 1;
+          break;
+        case 'ABANDONED':
+          candidate.abandonedAssessments += 1;
+          break;
+        case 'EXPIRED':
+          candidate.expiredAssessments += 1;
+          break;
+      }
+
+      // Update last activity if this session is more recent
+      if (session.updatedAt > candidate.lastActivity) {
+        candidate.lastActivity = session.updatedAt;
+        candidate.updatedAt = session.updatedAt;
+      }
+    });
+
+    // Convert map to array
+    const aggregatedCandidates = Array.from(candidateMap.values());
+
+    // Apply pagination to aggregated results
+    const startIndex = (filters.page - 1) * filters.pageSize;
+    const endIndex = startIndex + filters.pageSize;
+    const paginatedCandidates = aggregatedCandidates.slice(startIndex, endIndex);
+
+    return {
+      data: paginatedCandidates,
+      total: aggregatedCandidates.length,
+      page: filters.page,
+      pageSize: filters.pageSize,
+      totalPages: Math.ceil(aggregatedCandidates.length / filters.pageSize),
+    };
   }
 }
