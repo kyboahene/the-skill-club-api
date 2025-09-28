@@ -150,4 +150,123 @@ export class TestsController {
   remove(@Param('id') id: string) {
     return this.testsService.deleteTest(id);
   }
+
+  // Question Management Endpoints
+  @Auth(['add_question', 'add_question_global'])
+  @Post(':testId/questions')
+  @ApiOperation({
+    summary: "Creates a single question for a test",
+    description: 'Required permissions: "add_question" or "add_question_global"',
+  })
+  @ApiCreatedResponse({
+    description: "Created question object as response",
+  })
+  @ApiBadRequestResponse({
+    description: 'Question cannot be created. Try again!'
+  })
+  createQuestion(
+    @Param('testId') testId: string,
+    @Body() data: {
+      type: 'MULTIPLE_CHOICE' | 'TRUE_FALSE' | 'OPEN_ENDED' | 'CODING' | 'VIDEO_RESPONSE';
+      prompt: string;
+      options?: string[];
+      correctAnswer?: any;
+      maxScore?: number;
+      codeLanguage?: string;
+      timeLimitSeconds?: number;
+      difficulty?: 'EASY' | 'MEDIUM' | 'HARD';
+    }
+  ) {
+    return this.testsService.createQuestion(testId, data);
+  }
+
+  @Auth(['add_question', 'add_question_global'])
+  @Post(':testId/questions/bulk')
+  @ApiOperation({
+    summary: "Creates multiple questions for a test",
+    description: 'Required permissions: "add_question" or "add_question_global"',
+  })
+  @ApiCreatedResponse({
+    description: "Bulk creation result with created questions",
+  })
+  @ApiBadRequestResponse({
+    description: 'Questions cannot be created. Try again!'
+  })
+  bulkCreateQuestions(
+    @Param('testId') testId: string,
+    @Body() data: {
+      questions: Array<{
+        type: 'MULTIPLE_CHOICE' | 'TRUE_FALSE' | 'OPEN_ENDED' | 'CODING' | 'VIDEO_RESPONSE';
+        prompt: string;
+        options?: string[];
+        correctAnswer?: any;
+        maxScore?: number;
+        codeLanguage?: string;
+        timeLimitSeconds?: number;
+        difficulty?: 'EASY' | 'MEDIUM' | 'HARD';
+      }>;
+    }
+  ) {
+    return this.testsService.bulkCreateQuestions(testId, data.questions);
+  }
+
+  @Auth(['get_questions', 'get_questions_global'])
+  @Get(':testId/questions')
+  @ApiOperation({
+    summary: "Returns all questions for a test",
+    description: 'Required permissions: "get_questions" or "get_questions_global"',
+  })
+  @ApiCreatedResponse({
+    description: "Returns questions for a test",
+  })
+  @ApiBadRequestResponse({
+    description: 'Questions cannot be retrieved. Try again!'
+  })
+  getQuestionsByTest(@Param('testId') testId: string) {
+    return this.testsService.getQuestionsByTest(testId);
+  }
+
+  @Auth(['update_question', 'update_question_global'])
+  @Patch('questions/:questionId')
+  @ApiOperation({
+    summary: "Updates a question by id",
+    description: 'Required permissions: "update_question" or "update_question_global"',
+  })
+  @ApiCreatedResponse({
+    description: "Returns updated question",
+  })
+  @ApiBadRequestResponse({
+    description: 'Question cannot be updated. Try again!'
+  })
+  updateQuestion(
+    @Param('questionId') questionId: string,
+    @Body() data: {
+      type?: 'MULTIPLE_CHOICE' | 'TRUE_FALSE' | 'OPEN_ENDED' | 'CODING' | 'VIDEO_RESPONSE';
+      prompt?: string;
+      options?: string[];
+      correctAnswer?: any;
+      maxScore?: number;
+      codeLanguage?: string;
+      timeLimitSeconds?: number;
+      difficulty?: 'EASY' | 'MEDIUM' | 'HARD';
+    }
+  ) {
+    return this.testsService.updateQuestion(questionId, data);
+  }
+
+  @Auth(['delete_question', 'delete_question_global'])
+  @Delete('questions/:questionId')
+  @ApiOperation({
+    summary: 'Deletes a question by id',
+    description: 'Required permissions: "delete_question" or "delete_question_global"',
+  })
+  @ApiCreatedResponse({
+    description: 'Returns deleted question',
+  })
+  @ApiBadRequestResponse({
+    description: 'Question cannot be deleted. Try again!'
+  })
+  deleteQuestion(@Param('questionId') questionId: string) {
+    return this.testsService.deleteQuestion(questionId);
+  }
 }
