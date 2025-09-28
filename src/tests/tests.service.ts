@@ -10,6 +10,17 @@ import { PrismaService } from "@/prisma/prisma.service";
 import { PaginationService } from "@/pagination/pagination.service";
 import { CreateTestDto, UpdateTestDto, GetTestsDto } from "./dto";
 
+interface CreateQuestionDto {
+  type: 'MULTIPLE_CHOICE' | 'TRUE_FALSE' | 'OPEN_ENDED' | 'CODING' | 'VIDEO_RESPONSE';
+  prompt: string;
+  options?: string[];
+  correctAnswer?: any;
+  maxScore?: number;
+  codeLanguage?: string;
+  timeLimitSeconds?: number;
+  difficulty?: 'EASY' | 'MEDIUM' | 'HARD';
+}
+
 @Injectable()
 export class TestsService {
   constructor(
@@ -267,6 +278,128 @@ export class TestsService {
       });
 
       return deletedTest;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  // Question Management Methods
+  async createQuestion(testId: string, createQuestionDto: CreateQuestionDto) {
+    try {
+      // First check if test exists
+      const test = await this.getTestById(testId);
+
+      const question = await this.prisma.question.create({
+        data: {
+          testId,
+          type: createQuestionDto.type,
+          prompt: createQuestionDto.prompt,
+          options: createQuestionDto.options || [],
+          correctAnswer: createQuestionDto.correctAnswer,
+          maxScore: createQuestionDto.maxScore || 1,
+          codeLanguage: createQuestionDto.codeLanguage,
+          timeLimitSeconds: createQuestionDto.timeLimitSeconds,
+          difficulty: createQuestionDto.difficulty || 'MEDIUM',
+        }
+      });
+
+      return question;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async bulkCreateQuestions(testId: string, questions: CreateQuestionDto[]) {
+    try {
+      // First check if test exists
+      const test = await this.getTestById(testId);
+
+      // Use a transaction to ensure all questions are created or none
+      const result = await this.prisma.$transaction(async (prisma) => {
+        const createdQuestions = [];
+
+        for (const questionData of questions) {
+          const question = await prisma.question.create({
+            data: {
+              testId,
+              type: questionData.type,
+              prompt: questionData.prompt,
+              options: questionData.options || [],
+              correctAnswer: questionData.correctAnswer,
+              maxScore: questionData.maxScore || 1,
+              codeLanguage: questionData.codeLanguage,
+              timeLimitSeconds: questionData.timeLimitSeconds,
+              difficulty: questionData.difficulty || 'MEDIUM',
+            }
+          });
+          createdQuestions.push(question);
+        }
+
+        return createdQuestions;
+      });
+
+      return {
+        success: true,
+        questionsCreated: result.length,
+        questions: result,
+      };
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async getQuestionsByTest(testId: string) {
+    try {
+      // First check if test exists
+      const test = await this.getTestById(testId);
+
+      const questions = await this.prisma.question.findMany({
+        where: { testId },
+        orderBy: { createdAt: 'asc' }
+      });
+
+      return questions;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async updateQuestion(questionId: string, updateData: Partial<CreateQuestionDto>) {
+    try {
+      const question = await this.prisma.question.findUnique({
+        where: { id: questionId }
+      });
+
+      if (!question) {
+        throw new NotFoundException("Question not found");
+      }
+
+      const updatedQuestion = await this.prisma.question.update({
+        where: { id: questionId },
+        data: updateData
+      });
+
+      return updatedQuestion;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async deleteQuestion(questionId: string) {
+    try {
+      const question = await this.prisma.question.findUnique({
+        where: { id: questionId }
+      });
+
+      if (!question) {
+        throw new NotFoundException("Question not found");
+      }
+
+      const deletedQuestion = await this.prisma.question.delete({
+        where: { id: questionId }
+      });
+
+      return deletedQuestion;
     } catch (error) {
       throw error;
     }
