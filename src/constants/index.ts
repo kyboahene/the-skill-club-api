@@ -101,14 +101,54 @@ export const RepaymentPeriod = {
       contextId: null, // Template - no specific company
       isSystem: true,
       permissions: [
+        // Job management permissions
         'e7a858d1-0a6b-2345-6789-bcdef0123456', // get_jobs
         '09ca7af3-2c8d-4567-89ab-def012345678', // get_job
         '4d0eb137-60c1-89ab-cdef-123456789012', // add_job
         '6f20d359-82e3-abcd-ef01-345678901234', // update_job
         '8142f57b-a405-cdef-0123-567890123456', // delete_job
+        '2bec9c15-4eaf-6789-abcd-f01234567890', // get_job_applications
+        
+        // Company management permissions
         '4d0eb157-60c1-89ab-cdef-678abcdef012', // get_companies
         '6f20d379-82e3-abcd-ef01-89abcdef1234', // get_company
-        '2bec9f35-4eaf-6789-abcd-56789bcdef01'  // update_company
+        'c58639df-e849-0123-4567-ef12345678ab', // add_company
+        '2bec9f35-4eaf-6789-abcd-56789bcdef01', // update_company
+        '8142f59b-a405-cdef-0123-abcdef123456', // get_company_users
+        '09ca7d13-2c8d-4567-89ab-3456789bcdef', // add_company_user
+        '4d0eb157-60c1-89ab-cdef-789bcdef0123', // update_company_user
+        '6f20d379-82e3-abcd-ef01-9bcdef012345', // delete_company_user
+        
+        // Test management permissions
+        'b2c3d4e5-f6a7-5890-b123-c4d5e6f7a890', // get_tests
+        'b2c3d4e5-f6a7-5890-b123-c4d5e6f7a892', // get_test
+        'b2c3d4e5-f6a7-5890-b123-c4d5e6f7a894', // get_tests_by_company
+        'b2c3d4e5-f6a7-5890-b123-c4d5e6f7a896', // get_tests_by_ids
+        'b2c3d4e5-f6a7-5890-b123-c4d5e6f7a898', // add_test
+        'b2c3d4e5-f6a7-5890-b123-c4d5e6f7a900', // update_test
+        'b2c3d4e5-f6a7-5890-b123-c4d5e6f7a902', // delete_test
+        
+        // Skills management permissions
+        'c3d4e5f6-a7b8-6901-c234-d5e6f7a8b901', // get_skills
+        'c3d4e5f6-a7b8-6901-c234-d5e6f7a8b903', // get_skill
+        'c3d4e5f6-a7b8-6901-c234-d5e6f7a8b905', // add_skill
+        'c3d4e5f6-a7b8-6901-c234-d5e6f7a8b907', // update_skill
+        'c3d4e5f6-a7b8-6901-c234-d5e6f7a8b909', // delete_skill
+        
+        // Company Assessment permissions
+        'e5f6a7b8-c9d0-8123-e456-f7a8b9c0d123', // get_company_assessments
+        'e5f6a7b8-c9d0-8123-e456-f7a8b9c0d125', // get_company_assessment
+        'e5f6a7b8-c9d0-8123-e456-f7a8b9c0d127', // get_company_assessment_invitations
+        'e5f6a7b8-c9d0-8123-e456-f7a8b9c0d129', // get_company_assessment_invitation
+        'e5f6a7b8-c9d0-8123-e456-f7a8b9c0d131', // update_company_assessment_invitation
+        'e5f6a7b8-c9d0-8123-e456-f7a8b9c0d133', // resend_company_assessment_invitation
+        'e5f6a7b8-c9d0-8123-e456-f7a8b9c0d135', // delete_company_assessment_invitation
+        'e5f6a7b8-c9d0-8123-e456-f7a8b9c0d137', // create_company_assessment_invitations
+        'e5f6a7b8-c9d0-8123-e456-f7a8b9c0d139', // get_company_candidate_sessions
+        
+        // User management permissions
+        'd4e5f6a7-b8c9-7012-d345-e6f7a8b9c012', // add_user
+        'd4e5f6a7-b8c9-7012-d345-e6f7a8b9c013'  // get_user
       ]
     },
     {
