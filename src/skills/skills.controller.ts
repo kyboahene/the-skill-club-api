@@ -9,15 +9,14 @@ import {
   Put,
 } from '@nestjs/common';
 import {
-  ApiCreatedResponse,
-  ApiBadRequestResponse,
   ApiTags,
   ApiOperation,
   ApiBearerAuth,
+  ApiCreatedResponse,
+  ApiBadRequestResponse,
 } from '@nestjs/swagger';
 import { Auth } from '@/auth/decorator';
 import { SkillsService } from './skills.service';
-import { SkillEntity } from './entities/skill.entity';
 import { CreateSkillDto, UpdateSkillDto } from './dto';
 
 @ApiTags('Skills')
