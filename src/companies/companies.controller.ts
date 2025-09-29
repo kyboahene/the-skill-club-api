@@ -37,6 +37,7 @@ import {
 } from './dto';
 import { CompanyAssessmentService } from './company-assessment.service';
 import { CandidateSessionsService } from '../candidate-sessions/candidate-sessions.service';
+import { CreateCompanyAssessmentDto } from './dto/company-assessments.dto';
 
 @ApiTags('Companies')
 @Controller('companies')
@@ -175,6 +176,28 @@ export class CompaniesController {
   ) {
     return this.companyAssessmentService.getCompanyAssessment(
       companyAssessmentId,
+    );
+  }
+
+  // @Auth(['add_company_assessment', 'add_company_assessment_global'])
+  @Auth(['get_company_assessment', 'get_company_assessment_global'])
+  @Post('assessments')
+  @ApiOperation({
+    summary: 'Creates and returns created company assessment',
+    description:
+      'Required permissions: "add_company_assessment" or "add_company_assessment_global"',
+  })
+  @ApiCreatedResponse({
+    description: 'Created company assessment object as response',
+  })
+  @ApiBadRequestResponse({
+    description: 'Company assessment cannot be created. Try again!',
+  })
+  async createCompanyAssessment(
+    @Body() createCompanyAssessmentDto: CreateCompanyAssessmentDto,
+  ) {
+    return this.companyAssessmentService.createCompanyAssessment(
+      createCompanyAssessmentDto,
     );
   }
 

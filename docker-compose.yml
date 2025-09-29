@@ -1,5 +1,5 @@
 services:
-  the-skill-club-server-db:
+  the-skill-club-api:
     image: postgres:13
     ports:
       - 5432:5432

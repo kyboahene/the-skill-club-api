@@ -84,9 +84,6 @@ export const RepaymentPeriod = {
         'c58639df-e849-0123-4567-89012345678a', // get_event
         '4d0eb157-60c1-89ab-cdef-678abcdef012', // get_companies
         '6f20d379-82e3-abcd-ef01-89abcdef1234', // get_company
-        'a1b2c3d4-e5f6-4789-a012-b3c4d5e6f789', // get_tests_bank
-        'a1b2c3d4-e5f6-4789-a012-b3c4d5e6f791', // get_test_bank
-        'a1b2c3d4-e5f6-4789-a012-b3c4d5e6f797', // get_tests_from_bank
         'b2c3d4e5-f6a7-5890-b123-c4d5e6f7a890', // get_tests
         'b2c3d4e5-f6a7-5890-b123-c4d5e6f7a892', // get_test
         'b2c3d4e5-f6a7-5890-b123-c4d5e6f7a894'  // get_tests_by_company
@@ -112,11 +109,11 @@ export const RepaymentPeriod = {
         // Company management permissions
         '4d0eb157-60c1-89ab-cdef-678abcdef012', // get_companies
         '6f20d379-82e3-abcd-ef01-89abcdef1234', // get_company
-        'c58639df-e849-0123-4567-ef12345678ab', // add_company
-        '2bec9f35-4eaf-6789-abcd-56789bcdef01', // update_company
+        'b47528ce-d738-f012-3456-ef12345678ab', // add_company
+        '2bec9f36-4eaf-6789-abcd-56789bcdef01', // update_company
         '8142f59b-a405-cdef-0123-abcdef123456', // get_company_users
-        '09ca7d13-2c8d-4567-89ab-3456789bcdef', // add_company_user
-        '4d0eb157-60c1-89ab-cdef-789bcdef0123', // update_company_user
+        '09ca7d14-2c8d-4567-89ab-3456789bcdef', // add_company_user
+        'c58639df-e849-0123-4567-789bcdef0123', // update_company_user
         '6f20d379-82e3-abcd-ef01-9bcdef012345', // delete_company_user
         
         // Test management permissions
@@ -136,6 +133,7 @@ export const RepaymentPeriod = {
         'c3d4e5f6-a7b8-6901-c234-d5e6f7a8b909', // delete_skill
         
         // Company Assessment permissions
+        'a1b2c3d4-e5f6-4789-a012-b3c4d5e6f799', // add_company_assessment
         'e5f6a7b8-c9d0-8123-e456-f7a8b9c0d123', // get_company_assessments
         'e5f6a7b8-c9d0-8123-e456-f7a8b9c0d125', // get_company_assessment
         'e5f6a7b8-c9d0-8123-e456-f7a8b9c0d127', // get_company_assessment_invitations
