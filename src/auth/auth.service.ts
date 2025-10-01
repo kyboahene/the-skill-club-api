@@ -196,7 +196,6 @@ export class AuthService {
     await this.updateRefreshToken(user.id, tokens.refreshToken);
 
     const { password, refreshToken, ...userWithoutSensitive } = user;
-
     return {
       user: userWithoutSensitive,
       ...tokens,

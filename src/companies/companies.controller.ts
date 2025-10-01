@@ -38,6 +38,8 @@ import {
 import { CompanyAssessmentService } from './company-assessment.service';
 import { CandidateSessionsService } from '../candidate-sessions/candidate-sessions.service';
 import { CreateCompanyAssessmentDto } from './dto/company-assessments.dto';
+import { GetUser } from '@/auth/decorator/get-user.decorator';
+import { UserWithRelationsEntity } from '@/users/entities/user-with-relations.entity';
 
 @ApiTags('Companies')
 @Controller('companies')
@@ -159,7 +161,7 @@ export class CompaniesController {
   }
 
   @Auth(['get_company_assessment', 'get_company_assessment_global'])
-  @Get('/:id/assessments')
+  @Get('/assessments/:id')
   @ApiOperation({
     summary: 'Retrieves a company assessment by id',
     description:
@@ -194,9 +196,12 @@ export class CompaniesController {
     description: 'Company assessment cannot be created. Try again!',
   })
   async createCompanyAssessment(
+    @GetUser("") user: UserWithRelationsEntity,
     @Body() createCompanyAssessmentDto: CreateCompanyAssessmentDto,
   ) {
     return this.companyAssessmentService.createCompanyAssessment(
+      user.company.id,
+      user.id,
       createCompanyAssessmentDto,
     );
   }

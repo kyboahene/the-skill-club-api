@@ -88,7 +88,11 @@ export class CompanyAssessmentService {
         invitations: true,
         assessmentTests: {
           include: {
-            test: true,
+            test: {
+              include: {
+                questions: true
+              }
+            },
              TestConfig: true,
           },
         },
@@ -104,8 +108,8 @@ export class CompanyAssessmentService {
     return companyAssessment;
   }
 
-  async createCompanyAssessment(data: CreateCompanyAssessmentDto) {
-    await this.companyService.getCompany(data.ownerCompanyId);
+  async createCompanyAssessment(ownerCompanyId: string, creatorId: string, data: CreateCompanyAssessmentDto) {
+    await this.companyService.getCompany(ownerCompanyId);
 
     return await this.prisma.companyAssessment.create({
       data: {
@@ -114,44 +118,66 @@ export class CompanyAssessmentService {
         ownerCompanyId: data.ownerCompanyId,
         maxTests: data.maxTests,
         maxCustomQuestions: data.maxCustomQuestions,
-        customQuestions: {
-          create: data.customQuestions.map((question) => ({
-            prompt: question.prompt,
-            options: question.options,
-            correctAnswer: question.correctAnswer,
-            type: question.type,
-            maxScore: question.maxScore,
-            codeLanguage: question.codeLanguage,
-            timeLimitSeconds: question.timeLimitSeconds,
-            difficulty: question.difficulty,
-          })),
-        },
-        brandingSettings: {
-          create: {
-            logoUrl: data.brandingSettings.logoUrl,
-            themeColorHex: data.brandingSettings.themeColorHex,
-            fontFamily: data.brandingSettings.fontFamily,
-            welcomeText: data.brandingSettings.welcomeText,
+        ...(data.assessmentTests && data.assessmentTests.length > 0 && {
+          assessmentTests: {
+            create: data.assessmentTests.map((assessmentTest) => ({
+              test: {
+                connect: {
+                  id: assessmentTest.testId,
+                },
+              },
+              TestConfig: {
+                create: {
+                  questionLimit: assessmentTest.questionLimit,
+                },
+              },
+            })),
           },
-        },
-        antiCheatSettings: {
-          create: {
-            blockCopyPaste: data.antiCheatSettings.blockCopyPaste,
-            disableRightClick: data.antiCheatSettings.disableRightClick,
-            detectWindowFocus: data.antiCheatSettings.detectWindowFocus,
-            detectTabSwitching: data.antiCheatSettings.detectTabSwitching,
-            enableFullscreen: data.antiCheatSettings.enableFullscreen,
-            preventScreenCapture: data.antiCheatSettings.preventScreenCapture,
-            enableScreenRecording: data.antiCheatSettings.enableScreenRecording,
-            screenRecordingInterval: data.antiCheatSettings.screenRecordingInterval,
+        }),
+        ...(data.customQuestions && data.customQuestions.length > 0 && {
+          customQuestions: {
+            create: data.customQuestions.map((question) => ({
+              prompt: question.prompt,
+              options: question.options,
+              correctAnswer: question.correctAnswer,
+              type: question.type,
+              maxScore: question.maxScore,
+              codeLanguage: question.codeLanguage,
+              timeLimitSeconds: question.timeLimitSeconds,
+              difficulty: question.difficulty,
+            })),
           },
-        },
+        }),
+        ...(data.brandingSettings && {
+          brandingSettings: {
+            create: {
+              logoUrl: data.brandingSettings.logoUrl,
+              themeColorHex: data.brandingSettings.themeColorHex,
+              fontFamily: data.brandingSettings.fontFamily,
+              welcomeText: data.brandingSettings.welcomeText,
+            },
+          },
+        }),
+        ...(data.antiCheatSettings && {
+          antiCheatSettings: {
+            create: {
+              blockCopyPaste: data.antiCheatSettings.blockCopyPaste,
+              disableRightClick: data.antiCheatSettings.disableRightClick,
+              detectWindowFocus: data.antiCheatSettings.detectWindowFocus,
+              detectTabSwitching: data.antiCheatSettings.detectTabSwitching,
+              enableFullscreen: data.antiCheatSettings.enableFullscreen,
+              preventScreenCapture: data.antiCheatSettings.preventScreenCapture,
+              enableScreenRecording: data.antiCheatSettings.enableScreenRecording,
+              screenRecordingInterval: data.antiCheatSettings.screenRecordingInterval,
+            },
+          },
+        }),
         languageCodes: data.languageCodes || [],
         timeLimitSeconds: data.timeLimitSeconds,
         timeLimitMinutes: data.timeLimitMinutes,
         passMark: data.passMark,
         expiresAt: data.expiresAt,
-        createdBy: data.createdBy,
+        createdBy: creatorId,
       },
     });
   }

@@ -72,6 +72,17 @@ export class AntiCheatSettingsDto {
   screenRecordingInterval?: number;
 }
 
+export class AssessmentTestDto {
+  @IsNumber()
+  @Min(1)
+  @Max(50)
+  questionLimit: number;
+
+  @IsString()
+  @IsNotEmpty()
+  testId: string;
+}
+
 export class CreateCompanyAssessmentDto {
   @IsString()
   @IsNotEmpty()
@@ -117,6 +128,11 @@ export class CreateCompanyAssessmentDto {
   @IsArray()
   @IsString({ each: true })
   languageCodes: string[];
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => AssessmentTestDto)
+  assessmentTests?: AssessmentTestDto[];
 
   @IsOptional()
   @IsNumber()

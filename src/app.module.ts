@@ -25,6 +25,7 @@ import { CandidateManagementModule } from './candidate-management/candidate-mana
 import { TestsModule } from './tests/tests.module';
 import { SkillsModule } from './skills/skills.module';
 import { FileUploadModule } from './file-upload/file-upload.module';
+import { PdfModule } from './pdf/pdf.module';
 
 @Module({
   imports: [
@@ -68,7 +69,8 @@ import { FileUploadModule } from './file-upload/file-upload.module';
     CandidateSessionsModule,
     CandidateManagementModule,
     TestsModule,
-    FileUploadModule
+    FileUploadModule,
+    PdfModule
   ],
   controllers: [AppController],
   providers: [AppService],

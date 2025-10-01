@@ -83,7 +83,7 @@ export class TestsService {
     }
     
     if (companyId) {
-      where.createdBy = companyId;
+      where.companyId = companyId;
     }
 
     if (search) {
