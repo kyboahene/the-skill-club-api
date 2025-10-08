@@ -12,6 +12,24 @@ import { EmailDeliveryStatus, InvitationStatus } from '@prisma/client';
 export class CandidateManagementService {
   constructor(private prisma: PrismaService) {}
 
+  /**
+   * Generate URL-safe slug from company name
+   */
+  private generateCompanySlug(companyName: string): string {
+    return companyName
+      .toLowerCase()
+      .trim()
+      .replace(/[^\w\s-]/g, '') // Remove special characters
+      .replace(/[\s_]+/g, '-')   // Replace spaces and underscores with hyphens
+      .replace(/^-+|-+$/g, '');  // Remove leading/trailing hyphens
+  }
+
+  private generateInvitationToken(): string {
+    return Math.random().toString(36).substring(2, 15) + 
+           Math.random().toString(36).substring(2, 15) + 
+           Date.now().toString(36);
+  }
+
   async getInvitations(query: GetInvitationsDto) {
     const { limit = 10, companyId, status, search } = query;
     
@@ -197,6 +215,11 @@ export class CandidateManagementService {
 
       const expirationDate = expiresAt ? new Date(expiresAt) : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
+      // Generate unique invitation token
+      const invitationToken = this.generateInvitationToken();
+      const companySlug = this.generateCompanySlug(company.name);
+      const invitationLink = `${process.env.APP_URL}/${companySlug}/assessment/invite/${invitationToken}`;
+
       const invitation = await this.prisma.candidateInvitation.create({
         data: {
           candidateEmail: email,
@@ -212,7 +235,8 @@ export class CandidateManagementService {
           attemptCount: 0,
           remindersSent: 0,
           emailDeliveryStatus: 'PENDING',
-          invitationLink: `${process.env.APP_URL}/${company.name}/assessments/take/${assessmentIds[0]}?invite=1234567890`,
+          invitationLink,
+          invitationToken,
         },
         include: {
           company: true,

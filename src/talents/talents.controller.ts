@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Query, Put } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Query } from '@nestjs/common';
 import { ApiCreatedResponse, ApiBadRequestResponse, ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 
 import { Auth } from '@/auth/decorator';
@@ -85,7 +85,7 @@ export class TalentsController {
   }
 
   @Auth(['update_talent_profile', 'update_talent_profile_global'])
-  @Put(':id/profile')
+  @Patch(':id/profile')
   @ApiOperation({
     summary: "Updates talent profile by user id",
     description: 'Required permissions: "update_talent_profile" or "update_talent_profile_global"',

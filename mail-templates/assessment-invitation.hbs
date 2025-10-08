@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{title}}</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f7f6;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 40px auto;
+            background-color: #ffffff;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(22, 24, 22, 0.08);
+        }
+        .header {
+            background: linear-gradient(to right, #f5e800, #7eed5e);
+            padding: 4px 0;
+        }
+        .content {
+            padding: 50px 40px;
+            color: #161816;
+            line-height: 1.8;
+        }
+        .greeting {
+            font-size: 16px;
+            margin-bottom: 30px;
+            color: #161816;
+            font-weight: 500;
+        }
+        .message {
+            font-size: 16px;
+            margin-bottom: 20px;
+            color: #3F634D;
+        }
+        .highlight-box {
+            background-color: #f4f7f6;
+            border-left: 4px solid #7eed5e;
+            padding: 20px;
+            margin: 25px 0;
+            border-radius: 6px;
+        }
+        .button-container {
+            text-align: center;
+            margin: 40px 0;
+        }
+        .cta-button {
+            display: inline-block;
+            padding: 16px 50px;
+            background: linear-gradient(to right, #f5e800, #7eed5e);
+            color: #161816 !important;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 16px;
+            letter-spacing: 0.5px;
+            box-shadow: 0 4px 15px rgba(126, 237, 94, 0.4);
+            transition: all 0.3s ease;
+        }
+        .cta-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(245, 232, 0, 0.5);
+        }
+        .divider {
+            height: 2px;
+            background: linear-gradient(to right, #f5e800, #7eed5e);
+            margin: 30px 0;
+            border-radius: 2px;
+        }
+        .footer {
+            background-color: #161816;
+            padding: 30px 40px;
+            text-align: left;
+            color: #f4f7f6;
+            font-size: 14px;
+        }
+        .signature {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 2px solid #7eed5e;
+        }
+        .signature p {
+            color: #161816;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header"></div>
+        
+        <div class="content">
+            <p class="greeting">Dear candidate,</p>
+            
+            <p class="message">
+                Thank you for your interest in working with <strong>Brandafrik</strong>.
+            </p>
+
+            <p class="message">
+                To proceed with your application, please complete the short assessment linked below:
+            </p>
+
+            <div class="button-container">
+                <a href="{{invitationLink}}" class="cta-button">Take Assessment</a>
+            </div>
+
+            <div class="highlight-box">
+                <p style="margin: 0; color: #3F634D; font-size: 15px;">
+                    This helps us better understand your skills and suitability for the role.
+                </p>
+            </div>
+
+            {{#if deadline}}
+            <p class="message">
+                Kindly complete the assessment by <strong style="color: #161816;">{{deadline}}</strong>.
+            </p>
+            {{/if}}
+
+            <div class="divider"></div>
+
+            <p class="message">
+                If you have any questions, feel free to reply to this email. We look forward to reviewing your submission!
+            </p>
+
+            <div class="signature">
+                <p style="margin: 0;">Warm Regards,</p>
+                <p style="margin: 5px 0 0 0;"><strong>The Brandafrik team.</strong></p>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p style="margin: 0; font-size: 12px; color: #a0aec0;">
+                &copy; {{year}} Brandafrik. All rights reserved.
+            </p>
+        </div>
+    </div>
+</body>
+</html>

@@ -318,4 +318,196 @@ export class CandidateSessionsService {
       totalPages: Math.ceil(aggregatedCandidates.length / filters.pageSize),
     };
   }
+
+  async submitAssessment(sessionId: string, submitData: { answers: any[]; totalTimeSpent: number }) {
+    const session = await this.prisma.candidateSession.findUnique({
+      where: { id: sessionId },
+    });
+
+    if (!session) {
+      throw new NotFoundException(`Candidate session with ID ${sessionId} not found`);
+    }
+
+    // Create all answers
+    const answerPromises = submitData.answers.map(answer => 
+      this.prisma.candidateAnswer.create({
+        data: {
+          sessionId,
+          questionId: answer.questionId,
+          response: answer.response,
+          timeSpent: answer.timeSpent || 0,
+          submittedAt: answer.submittedAt || new Date(),
+        },
+      })
+    );
+
+    await Promise.all(answerPromises);
+
+    // Update session status
+    const updatedSession = await this.prisma.candidateSession.update({
+      where: { id: sessionId },
+      data: {
+        status: 'COMPLETED',
+        endTime: new Date(),
+      },
+      include: {
+        answers: true,
+        scoreSummary: true,
+      },
+    });
+
+    return { success: true, session: updatedSession };
+  }
+
+  async calculateVerificationScore(sessionId: string) {
+    const session = await this.prisma.candidateSession.findUnique({
+      where: { id: sessionId },
+      include: {
+        violations: true,
+        deviceInfo: true,
+        sessionBehavior: true,
+        monitoring: true,
+      },
+    });
+
+    if (!session) {
+      throw new NotFoundException(`Candidate session with ID ${sessionId} not found`);
+    }
+
+    // Calculate verification score based on violations and behavioral data
+    let verificationScore = 100;
+    const riskFactors = [];
+
+    // Deduct points for violations
+    if (session.violations && session.violations.length > 0) {
+      const violationPenalty = session.violations.reduce((penalty, violation) => {
+        switch (violation.severity) {
+          case 'HIGH': return penalty + 15;
+          case 'MEDIUM': return penalty + 8;
+          case 'LOW': return penalty + 3;
+          default: return penalty;
+        }
+      }, 0);
+      
+      verificationScore -= violationPenalty;
+      riskFactors.push({
+        factor: 'Anti-cheat violations',
+        impact: -violationPenalty,
+        count: session.violations.length,
+      });
+    }
+
+    // Note: verificationScore would need to be added to schema
+    // For now, we'll return it without storing in CandidateSession
+    // Consider adding to ScoreSummary or SessionBehavior instead
+
+    return {
+      verificationScore: Math.max(0, verificationScore),
+      riskFactors,
+      trustLevel: verificationScore >= 80 ? 'HIGH' : verificationScore >= 60 ? 'MEDIUM' : 'LOW',
+    };
+  }
+
+  async updateBehavioralProfile(sessionId: string, profileData: any) {
+    const session = await this.prisma.candidateSession.findUnique({
+      where: { id: sessionId },
+    });
+
+    if (!session) {
+      throw new NotFoundException(`Candidate session with ID ${sessionId} not found`);
+    }
+
+    // Update or create session behavior
+    const behavior = await this.prisma.sessionBehavior.upsert({
+      where: { sessionId },
+      create: {
+        sessionId,
+        ...profileData,
+      },
+      update: profileData,
+    });
+
+    return behavior;
+  }
+
+  async addViolation(sessionId: string, violationData: any) {
+    const session = await this.prisma.candidateSession.findUnique({
+      where: { id: sessionId },
+    });
+
+    if (!session) {
+      throw new NotFoundException(`Candidate session with ID ${sessionId} not found`);
+    }
+
+    return this.prisma.antiCheatViolation.create({
+      data: {
+        sessionId,
+        type: violationData.type,
+        description: violationData.description || violationData.type,
+        severity: violationData.severity,
+        timestamp: violationData.timestamp || new Date(),
+        details: violationData.metadata || {},
+      },
+    });
+  }
+
+  async updateDeviceInfo(sessionId: string, deviceInfo: any) {
+    const session = await this.prisma.candidateSession.findUnique({
+      where: { id: sessionId },
+    });
+
+    if (!session) {
+      throw new NotFoundException(`Candidate session with ID ${sessionId} not found`);
+    }
+
+    return this.prisma.deviceInfo.upsert({
+      where: { sessionId },
+      create: {
+        sessionId,
+        ...deviceInfo,
+      },
+      update: deviceInfo,
+    });
+  }
+
+  async updateScreenRecording(sessionId: string, recordingData: any) {
+    const session = await this.prisma.candidateSession.findUnique({
+      where: { id: sessionId },
+    });
+
+    if (!session) {
+      throw new NotFoundException(`Candidate session with ID ${sessionId} not found`);
+    }
+
+    return this.prisma.screenRecordingData.upsert({
+      where: { sessionId },
+      create: {
+        sessionId,
+        ...recordingData,
+      },
+      update: recordingData,
+    });
+  }
+
+  async updateTrackingData(sessionId: string, trackingData: any) {
+    const session = await this.prisma.candidateSession.findUnique({
+      where: { id: sessionId },
+    });
+
+    if (!session) {
+      throw new NotFoundException(`Candidate session with ID ${sessionId} not found`);
+    }
+
+    // QuestionTracking doesn't support upsert with unique sessionId
+    // Create new tracking entry instead
+    return this.prisma.questionTracking.create({
+      data: {
+        sessionId,
+        questionId: trackingData.questionId,
+        timeSpent: trackingData.timeSpent || 0,
+        attempts: trackingData.attempts || 1,
+        ...trackingData,
+      },
+    });
+  }
 }

@@ -7,7 +7,7 @@ import {
   Param,
   Delete,
   Query,
-  Put,
+  SetMetadata,
 } from '@nestjs/common';
 import {
   ApiCreatedResponse,
@@ -38,8 +38,12 @@ import {
 import { CompanyAssessmentService } from './company-assessment.service';
 import { CandidateSessionsService } from '../candidate-sessions/candidate-sessions.service';
 import { CreateCompanyAssessmentDto } from './dto/company-assessments.dto';
+import { UpdateCompanyAssessmentDto } from './dto/update-company-assessment.dto';
 import { GetUser } from '@/auth/decorator/get-user.decorator';
 import { UserWithRelationsEntity } from '@/users/entities/user-with-relations.entity';
+
+export const IS_PUBLIC_KEY = 'isPublic';
+export const Public = () => SetMetadata(IS_PUBLIC_KEY, true);
 
 @ApiTags('Companies')
 @Controller('companies')
@@ -206,8 +210,48 @@ export class CompaniesController {
     );
   }
 
+  @Auth(['update_company_assessment', 'update_company_assessment_global'])
+  @Patch('assessments/:id')
+  @ApiOperation({
+    summary: 'Updates and returns updated company assessment',
+    description:
+      'Required permissions: "update_company_assessment" or "update_company_assessment_global"',
+  })
+  @ApiCreatedResponse({
+    description: 'Updated company assessment object as response',
+  })
+  @ApiBadRequestResponse({
+    description: 'Company assessment cannot be updated. Try again!',
+  })
+  async updateCompanyAssessment(
+    @Param('id') assessmentId: string,
+    @Body() updateCompanyAssessmentDto: UpdateCompanyAssessmentDto,
+  ) {
+    return this.companyAssessmentService.updateCompanyAssessment(
+      assessmentId,
+      updateCompanyAssessmentDto,
+    );
+  }
+
+  @Auth(['delete_company_assessment', 'delete_company_assessment_global'])
+  @Delete('assessments/:id')
+  @ApiOperation({
+    summary: 'Deletes a company assessment by id',
+    description:
+      'Required permissions: "delete_company_assessment" or "delete_company_assessment_global"',
+  })
+  @ApiCreatedResponse({
+    description: 'Company assessment deleted successfully',
+  })
+  @ApiBadRequestResponse({
+    description: 'Company assessment cannot be deleted. Try again!',
+  })
+  async deleteCompanyAssessment(@Param('id') assessmentId: string) {
+    return this.companyAssessmentService.deleteCompanyAssessment(assessmentId);
+  }
+
   @Auth(['update_company', 'update_company_global'])
-  @Put(':id')
+  @Patch(':id')
   @ApiOperation({
     summary: 'Updates a company by id and returns it',
     description:
@@ -228,7 +272,7 @@ export class CompaniesController {
   }
 
   @Auth(['update_company_user', 'update_company_user_global'])
-  @Put('users/:userId')
+  @Patch('users/:userId')
   @ApiOperation({
     summary: 'Updates a company user by user id',
     description:
@@ -269,7 +313,7 @@ export class CompaniesController {
 
   // Assessment Invitations Endpoints
   @Auth(['get_company_assessment_invitations', 'get_company_assessment_invitations_global'])
-  @Get('assessments/invitations')
+  @Get('/:companyId/assessments/invitations')
   @ApiOperation({
     summary: 'Retrieves a paginated list of company assessment invitations',
     description: 'Required permissions: "get_company_assessment_invitations" or "get_company_assessment_invitations_global"',
@@ -281,14 +325,13 @@ export class CompaniesController {
     description: 'Assessment invitations cannot be retrieved. Try again!',
   })
   async getCompanyAssessmentInvitations(
+    @Param("companyId") companyId: string,
     @Query('page') page: string = '1',
     @Query('pageSize') pageSize: string = '10',
     @Query('all') all: string = 'false',
     @Query('search') search?: string,
     @Query('status') status?: string,
   ) {
-    // Note: In a real implementation, you'd get the companyId from the authenticated user
-    const companyId = 'current-company-id'; // This should come from auth context
     return this.companyAssessmentService.getCompanyAssessmentInvitations(
       companyId,
       {
@@ -318,7 +361,7 @@ export class CompaniesController {
   }
 
   @Auth(['update_company_assessment_invitation', 'update_company_assessment_invitation_global'])
-  @Put('assessments/invitations/:invitationId')
+  @Patch('assessments/invitations/:invitationId')
   @ApiOperation({
     summary: 'Updates an assessment invitation',
     description: 'Required permissions: "update_company_assessment_invitation" or "update_company_assessment_invitation_global"',
@@ -433,13 +476,13 @@ export class CompaniesController {
       maxAttempts: number;
       customMessage?: string;
     },
-    @Query('companyId') companyId: string,
+    @GetUser("") user: UserWithRelationsEntity,
   ) {
     return this.companyAssessmentService.createBulkCompanyAssessmentInvitations({
       ...createBulkInvitationDto,
-      companyId,
-      invitedBy: 'current-user-id', // TODO: Get from auth context
-      invitedByName: 'Current User', // TODO: Get from auth context
+      companyId: user.company.id,
+      invitedBy: user.id,
+      invitedByName: user.name,
     });
   }
 
@@ -470,5 +513,21 @@ export class CompaniesController {
       all: JSON.parse(all),
       search,
     });
+  }
+
+  @Public()
+  @Get('invitations/token/:token')
+  @ApiOperation({
+    summary: 'Get invitation details by token (Public endpoint for candidates)',
+    description: 'Allows candidates to retrieve their invitation details using the unique token from the invitation link. This endpoint is not protected by authentication.',
+  })
+  @ApiCreatedResponse({
+    description: 'Returns invitation details with company and assessment information',
+  })
+  @ApiBadRequestResponse({
+    description: 'Invitation not found, expired, or invalid',
+  })
+  async getInvitationByToken(@Param('token') token: string) {
+    return this.companyAssessmentService.getInvitationByToken(token);
   }
 }

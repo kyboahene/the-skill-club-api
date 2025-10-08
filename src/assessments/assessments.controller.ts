@@ -2,7 +2,7 @@ import {
   Controller,
   Get,
   Post,
-  Put,
+  Patch,
   Delete,
   Body,
   Param,
@@ -43,7 +43,7 @@ export class AssessmentsController {
     return this.assessmentsService.createAssessment(createAssessmentDto);
   }
 
-  @Put(':id')
+  @Patch(':id')
   async updateAssessment(
     @Param('id') id: string,
     @Body() updateAssessmentDto: UpdateAssessmentDto,

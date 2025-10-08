@@ -6,7 +6,7 @@ import {
   Param,
   Delete,
   Query,
-  Put,
+  Patch,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -77,7 +77,7 @@ export class SkillsController {
   }
 
   @Auth(['update_skill', 'update_skill_global'])
-  @Put(':id')
+  @Patch(':id')
   @ApiOperation({
     summary: 'Updates a skill by id and returns it',
     description:

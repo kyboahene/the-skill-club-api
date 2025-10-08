@@ -17,6 +17,7 @@ import {
   PasswordReset,
   RequestReview,
   EmailVerification,
+  AssessmentInvitation,
 } from './entities/emails.entity';
 
 type SendTextMessage = {
@@ -125,6 +126,29 @@ export class SendEmailsService {
     console.log('At the event:', { data });
 
     await this.smsService.sendSMS(data.recipient, data.message);
+  }
+
+  @OnEvent('assessment.invitation')
+  async sendAssessmentInvitation(data: AssessmentInvitation) {
+    await this.mailService.sendMail({
+      to: data.candidateEmail,
+      from: process.env.EMAIL_ADDRESS,
+      subject: data.subject,
+      template: data.template,
+      context: {
+        candidateName: data.candidateName,
+        candidateEmail: data.candidateEmail,
+        companyName: data.companyName,
+        invitationLink: data.invitationLink,
+        assessmentTitles: data.assessmentTitles,
+        deadline: data.deadline,
+        maxAttempts: data.maxAttempts,
+        customMessage: data.customMessage,
+        title: data.subject,
+        year: new Date().getFullYear(),
+        baseURL: process.env.BASE_URL,
+      },
+    });
   }
 
   async sendNotifications(data: SendNotificationDto) {

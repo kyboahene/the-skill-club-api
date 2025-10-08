@@ -3,15 +3,18 @@ import {
   NotFoundException,
   ForbiddenException,
   ConflictException,
+  BadRequestException,
 } from '@nestjs/common';
 import { Prisma, InvitationStatus, EmailDeliveryStatus } from '@prisma/client';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { PrismaService } from '../prisma/prisma.service';
 import { PaginationService } from '../pagination/pagination.service';
 import { CreateAssessmentDto } from '@/assessments/dto/create-assessment.dto';
 import { CompaniesService } from './companies.service';
 import { CreateCompanyAssessmentDto } from './dto/company-assessments.dto';
+import { UpdateCompanyAssessmentDto } from './dto/update-company-assessment.dto';
 
 @Injectable()
 export class CompanyAssessmentService {
@@ -19,6 +22,7 @@ export class CompanyAssessmentService {
     private prisma: PrismaService,
     private paginationService: PaginationService,
     private companyService: CompaniesService,
+    private eventEmitter: EventEmitter2,
   ) {}
 
   async getCompanyAssessments(
@@ -182,6 +186,157 @@ export class CompanyAssessmentService {
     });
   }
 
+  async updateCompanyAssessment(assessmentId: string, data: UpdateCompanyAssessmentDto) {
+    // Verify the assessment exists and belongs to the company
+    const existingAssessment = await this.prisma.companyAssessment.findUnique({
+      where: {
+        id: assessmentId,
+      },
+    });
+
+    if (!existingAssessment) {
+      throw new NotFoundException(`Assessment with ID ${assessmentId} not found for this company`);
+    }
+
+    // Delete existing related records
+    await this.prisma.assessmentTest.deleteMany({
+      where: { assessmentId },
+    });
+    await this.prisma.question.deleteMany({
+      where: { assessmentId },
+    });
+
+    // Update the assessment with new data
+    return await this.prisma.companyAssessment.update({
+      where: { id: assessmentId },
+      data: {
+        title: data.title,
+        description: data.description,
+        maxTests: data.maxTests,
+        maxCustomQuestions: data.maxCustomQuestions,
+        ...(data.assessmentTests && data.assessmentTests.length > 0 && {
+          assessmentTests: {
+            create: data.assessmentTests.map((assessmentTest) => ({
+              test: {
+                connect: {
+                  id: assessmentTest.testId,
+                },
+              },
+              TestConfig: {
+                create: {
+                  questionLimit: assessmentTest.questionLimit,
+                },
+              },
+            })),
+          },
+        }),
+        ...(data.customQuestions && data.customQuestions.length > 0 && {
+          customQuestions: {
+            create: data.customQuestions.map((question) => ({
+              prompt: question.prompt,
+              options: question.options,
+              correctAnswer: question.correctAnswer,
+              type: question.type,
+              maxScore: question.maxScore,
+              codeLanguage: question.codeLanguage,
+              timeLimitSeconds: question.timeLimitSeconds,
+              difficulty: question.difficulty,
+            })),
+          },
+        }),
+        ...(data.brandingSettings && {
+          brandingSettings: {
+            upsert: {
+              create: {
+                logoUrl: data.brandingSettings.logoUrl,
+                themeColorHex: data.brandingSettings.themeColorHex,
+                fontFamily: data.brandingSettings.fontFamily,
+                welcomeText: data.brandingSettings.welcomeText,
+              },
+              update: {
+                logoUrl: data.brandingSettings.logoUrl,
+                themeColorHex: data.brandingSettings.themeColorHex,
+                fontFamily: data.brandingSettings.fontFamily,
+                welcomeText: data.brandingSettings.welcomeText,
+              },
+            },
+          },
+        }),
+        ...(data.antiCheatSettings && {
+          antiCheatSettings: {
+            upsert: {
+              create: {
+                blockCopyPaste: data.antiCheatSettings.blockCopyPaste,
+                disableRightClick: data.antiCheatSettings.disableRightClick,
+                detectWindowFocus: data.antiCheatSettings.detectWindowFocus,
+                detectTabSwitching: data.antiCheatSettings.detectTabSwitching,
+                enableFullscreen: data.antiCheatSettings.enableFullscreen,
+                preventScreenCapture: data.antiCheatSettings.preventScreenCapture,
+                enableScreenRecording: data.antiCheatSettings.enableScreenRecording,
+                screenRecordingInterval: data.antiCheatSettings.screenRecordingInterval,
+              },
+              update: {
+                blockCopyPaste: data.antiCheatSettings.blockCopyPaste,
+                disableRightClick: data.antiCheatSettings.disableRightClick,
+                detectWindowFocus: data.antiCheatSettings.detectWindowFocus,
+                detectTabSwitching: data.antiCheatSettings.detectTabSwitching,
+                enableFullscreen: data.antiCheatSettings.enableFullscreen,
+                preventScreenCapture: data.antiCheatSettings.preventScreenCapture,
+                enableScreenRecording: data.antiCheatSettings.enableScreenRecording,
+                screenRecordingInterval: data.antiCheatSettings.screenRecordingInterval,
+              },
+            },
+          },
+        }),
+        languageCodes: data.languageCodes || [],
+        timeLimitSeconds: data.timeLimitSeconds,
+        timeLimitMinutes: data.timeLimitMinutes,
+        passMark: data.passMark,
+        expiresAt: data.expiresAt,
+      },
+      include: {
+        company: true,
+        creator: true,
+        antiCheatSettings: true,
+        brandingSettings: true,
+        assessmentTests: {
+          include: {
+            test: true,
+            TestConfig: true,
+          },
+        },
+        customQuestions: true,
+      },
+    });
+  }
+
+  async deleteCompanyAssessment(assessmentId: string) {
+    const assessment = await this.prisma.companyAssessment.findUnique({
+      where: { id: assessmentId },
+      include: {
+        candidateSessions: true,
+      },
+    });
+
+    if (!assessment) {
+      throw new NotFoundException(`Assessment with ID ${assessmentId} not found`);
+    }
+
+    // Check if there are any candidate sessions
+    if (assessment.candidateSessions && assessment.candidateSessions.length > 0) {
+      throw new ConflictException(
+        `Cannot delete assessment with existing candidate sessions. Please archive it instead.`
+      );
+    }
+
+    // Delete the assessment (cascade will handle related records)
+    await this.prisma.companyAssessment.delete({
+      where: { id: assessmentId },
+    });
+
+    return { message: 'Assessment deleted successfully', id: assessmentId };
+  }
+
   // Company Assessment Invitations Methods
   async getCompanyAssessmentInvitations(
     companyId: string,
@@ -259,12 +414,26 @@ export class CompanyAssessmentService {
     expiresAt: Date;
     maxAttempts: number;
   }) {
-    // Check if company exists
-    await this.companyService.getCompany(data.companyId);
+    // Check if company exists and get company data
+    const company = await this.companyService.getCompany(data.companyId);
 
-    // Generate unique invitation link
+    // Check for existing active invitation with the same candidate email and assessment IDs
+    const hasExistingInvitation = await this.checkExistingInvitation(
+      data.candidateEmail,
+      data.companyId,
+      data.assessmentIds
+    );
+
+    if (hasExistingInvitation) {
+      throw new ConflictException(
+        `An active invitation already exists for ${data.candidateEmail}. Please wait for it to expire or complete before sending a new one.`
+      );
+    }
+
+    // Generate unique invitation link with company name
     const invitationToken = this.generateInvitationToken();
-    const invitationLink = `${process.env.FRONTEND_URL}/assessment/invite/${invitationToken}`;
+    const companySlug = this.generateCompanySlug(company.name);
+    const invitationLink = `${process.env.FRONTEND_URL}/${companySlug}/assessment/invite/${invitationToken}`;
 
     try {
       const invitation = await this.prisma.candidateInvitation.create({
@@ -278,6 +447,7 @@ export class CompanyAssessmentService {
           expiresAt: data.expiresAt,
           maxAttempts: data.maxAttempts,
           invitationLink,
+          invitationToken,
           status: InvitationStatus.SENT,
           emailDeliveryStatus: EmailDeliveryStatus.PENDING,
         },
@@ -289,6 +459,8 @@ export class CompanyAssessmentService {
 
       return invitation;
     } catch (error) {
+
+      console.error("Error creating company assessment invitation:", error);
       if (error instanceof PrismaClientKnownRequestError) {
         if (error.code === 'P2002') {
           throw new ConflictException('Invitation already exists for this candidate and assessment');
@@ -311,8 +483,9 @@ export class CompanyAssessmentService {
     maxAttempts: number;
     customMessage?: string;
   }) {
-    // Check if company exists
-    await this.companyService.getCompany(data.companyId);
+    // Check if company exists and get company data
+    const company = await this.companyService.getCompany(data.companyId);
+    const companySlug = this.generateCompanySlug(company.name);
 
     const invitations = [];
     const errors = [];
@@ -324,9 +497,25 @@ export class CompanyAssessmentService {
 
         for (const candidate of data.candidates) {
           try {
+            // Check for existing active invitation
+            const hasExistingInvitation = await this.checkExistingInvitation(
+              candidate.candidateEmail,
+              data.companyId,
+              data.assessmentIds,
+              prisma
+            );
+
+            if (hasExistingInvitation) {
+              errors.push({
+                email: candidate.candidateEmail,
+                error: 'An active invitation already exists for this candidate'
+              });
+              continue; // Skip this candidate
+            }
+
             // Generate unique invitation token for each candidate
             const invitationToken = this.generateInvitationToken();
-            const invitationLink = `${process.env.FRONTEND_URL}/assessment/invite/${invitationToken}`;
+            const invitationLink = `${process.env.FRONTEND_URL}/${companySlug}/assessment/invite/${invitationToken}`;
 
             const invitation = await prisma.candidateInvitation.create({
               data: {
@@ -339,6 +528,7 @@ export class CompanyAssessmentService {
                 expiresAt: data.expiresAt,
                 maxAttempts: data.maxAttempts,
                 invitationLink,
+                invitationToken,
                 status: InvitationStatus.SENT,
                 emailDeliveryStatus: EmailDeliveryStatus.PENDING,
               },
@@ -367,6 +557,55 @@ export class CompanyAssessmentService {
         return createdInvitations;
       });
 
+      // Emit events to send invitation emails asynchronously
+      for (const invitation of result) {
+        try {
+          // Extract assessment titles for the email
+          const assessmentTitles = invitation.assessments?.map(a => a.title) || [];
+          
+          // Format deadline if available
+          const deadline = data.expiresAt 
+            ? new Date(data.expiresAt).toLocaleDateString('en-US', { 
+                weekday: 'long', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+              })
+            : undefined;
+
+          // Emit event for background email sending
+          this.eventEmitter.emit('assessment.invitation', {
+            to: invitation.candidateEmail,
+            candidateEmail: invitation.candidateEmail,
+            candidateName: invitation.candidateName,
+            companyName: invitation.company?.name || 'Company',
+            invitationLink: invitation.invitationLink,
+            assessmentTitles,
+            deadline,
+            maxAttempts: data.maxAttempts,
+            customMessage: data.customMessage,
+            subject: `Assessment Invitation from ${invitation.company?.name || 'Company'}`,
+            template: 'assessment-invitation',
+            name: invitation.candidateName,
+          });
+
+          // Update email delivery status to SENT after emitting event
+          await this.prisma.candidateInvitation.update({
+            where: { id: invitation.id },
+            data: { emailDeliveryStatus: EmailDeliveryStatus.SENT }
+          });
+        } catch (emailError) {
+          // Log error but don't fail the entire operation
+          console.error(`Failed to send email for invitation ${invitation.id}:`, emailError);
+          
+          // Update email delivery status to FAILED
+          await this.prisma.candidateInvitation.update({
+            where: { id: invitation.id },
+            data: { emailDeliveryStatus: EmailDeliveryStatus.FAILED }
+          });
+        }
+      }
+
       return {
         successful: result.length,
         failed: errors.length,
@@ -375,6 +614,7 @@ export class CompanyAssessmentService {
         total: data.candidates.length
       };
     } catch (error) {
+      console.error("Error creating bulk company assessment invitations:", error);
       throw error;
     }
   }
@@ -430,18 +670,40 @@ export class CompanyAssessmentService {
   }) {
     const invitation = await this.getCompanyAssessmentInvitation(data.invitationId);
 
-    // Update invitation with resend information
-    const updatedInvitation = await this.updateCompanyAssessmentInvitation(data.invitationId, {
-      emailDeliveryStatus: EmailDeliveryStatus.SENT,
-      remindersSent: (invitation.remindersSent || 0) + 1,
-      lastReminderSent: new Date(),
-    });
+    try {
+      // Extract assessment titles for the email
+      const assessmentTitles = invitation.assessments?.map(a => a.title) || [];
 
-    // Here you would integrate with your email service
-    // For now, we'll just return the updated invitation
-    // TODO: Integrate with email service (SendGrid, AWS SES, etc.)
-    
-    return updatedInvitation;
+      // Emit event for background email sending (resend)
+      this.eventEmitter.emit('assessment.invitation', {
+        to: data.candidateEmail,
+        candidateEmail: data.candidateEmail,
+        candidateName: data.candidateName,
+        companyName: data.companyName,
+        invitationLink: data.assessmentLink,
+        assessmentTitles,
+        deadline: data.deadline,
+        maxAttempts: invitation.maxAttempts,
+        subject: `Reminder: Assessment Invitation from ${data.companyName}`,
+        template: 'assessment-invitation',
+        name: data.candidateName,
+      });
+
+      // Update invitation with resend information
+      const updatedInvitation = await this.updateCompanyAssessmentInvitation(data.invitationId, {
+        emailDeliveryStatus: EmailDeliveryStatus.SENT,
+        remindersSent: (invitation.remindersSent || 0) + 1,
+        lastReminderSent: new Date(),
+      });
+
+      return updatedInvitation;
+    } catch (error) {
+      // Update email delivery status to FAILED
+      await this.updateCompanyAssessmentInvitation(data.invitationId, {
+        emailDeliveryStatus: EmailDeliveryStatus.FAILED,
+      });
+      throw error;
+    }
   }
 
   async deleteCompanyAssessmentInvitation(invitationId: string) {
@@ -456,6 +718,104 @@ export class CompanyAssessmentService {
     return await this.prisma.candidateInvitation.delete({
       where: { id: invitationId },
     });
+  }
+
+  async getInvitationByToken(token: string) {
+    const invitation = await this.prisma.candidateInvitation.findUnique({
+      where: { invitationToken: token },
+      include: {
+        company: {
+          select: {
+            id: true,
+            name: true,
+            logo: true,
+          },
+        },
+        assessments: {
+          select: {
+            id: true,
+            title: true,
+            description: true,
+            timeLimitSeconds: true,
+            timeLimitMinutes: true,
+            passMark: true,
+            maxTests: true,
+            maxCustomQuestions: true,
+            languageCodes: true,
+          },
+        },
+      },
+    });
+
+    if (!invitation) {
+      throw new NotFoundException('Invitation not found or has expired');
+    }
+
+    // Check if invitation has expired
+    if (new Date() > invitation.expiresAt) {
+      throw new BadRequestException('This invitation has expired');
+    }
+
+    // Check if invitation status is valid
+    if (invitation.status === InvitationStatus.COMPLETED) {
+      throw new BadRequestException('This assessment has already been completed');
+    }
+
+    if (invitation.status === InvitationStatus.CANCELLED) {
+      throw new BadRequestException('This invitation has been cancelled');
+    }
+
+    // Check if max attempts reached
+    if (invitation.attemptCount >= invitation.maxAttempts) {
+      throw new BadRequestException('Maximum attempts reached for this assessment');
+    }
+
+    // Update status to OPENED if it's the first time
+    if (invitation.status === InvitationStatus.SENT && !invitation.openedAt) {
+      await this.prisma.candidateInvitation.update({
+        where: { id: invitation.id },
+        data: {
+          status: InvitationStatus.OPENED,
+          openedAt: new Date(),
+        },
+      });
+    }
+
+    return invitation;
+  }
+
+  private async checkExistingInvitation(
+    candidateEmail: string,
+    companyId: string,
+    assessmentIds: string[],
+    prisma: any = this.prisma
+  ): Promise<boolean> {
+    const existingInvitation = await prisma.candidateInvitation.findFirst({
+      where: {
+        candidateEmail,
+        companyId,
+        assessmentIds: {
+          hasEvery: assessmentIds,
+        },
+        status: {
+          in: [InvitationStatus.SENT, InvitationStatus.OPENED, InvitationStatus.STARTED],
+        },
+        expiresAt: {
+          gte: new Date(), // Not expired yet
+        },
+      },
+    });
+
+    return !!existingInvitation;
+  }
+
+  private generateCompanySlug(companyName: string): string {
+    return companyName
+      .toLowerCase()
+      .trim()
+      .replace(/[^\w\s-]/g, '') 
+      .replace(/[\s_]+/g, '-')  
+      .replace(/^-+|-+$/g, '');  
   }
 
   private generateInvitationToken(): string {

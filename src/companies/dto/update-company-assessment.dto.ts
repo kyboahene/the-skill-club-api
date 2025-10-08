@@ -1,6 +1,7 @@
-import { PartialType } from '@nestjs/swagger';
+import { OmitType, PartialType } from '@nestjs/swagger';
 import { CreateCompanyAssessmentDto } from './company-assessments.dto';
 
-export class UpdateCompanyAssessmentDto  extends PartialType(CreateCompanyAssessmentDto){
-  
-}
+// Omit ownerCompanyId and createdBy from updates - these are set during creation
+export class UpdateCompanyAssessmentDto extends PartialType(
+  OmitType(CreateCompanyAssessmentDto, ['ownerCompanyId', 'createdBy'] as const)
+) {}

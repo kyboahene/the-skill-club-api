@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Query, Put } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Query } from '@nestjs/common';
 import { ApiCreatedResponse, ApiBadRequestResponse, ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 
 import { Auth } from '@/auth/decorator';
@@ -81,7 +81,7 @@ export class EventsController {
   }
 
   @Auth(['update_event', 'update_event_global'])
-  @Put(':id')
+  @Patch(':id')
   @ApiOperation({
     summary: "Updates an event by id and returns it",
     description: 'Required permissions: "update_event" or "update_event_global"',

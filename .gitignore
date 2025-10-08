@@ -44,3 +44,5 @@ prisma/generated/
 # Uploads
 uploads/
 temp/
+
+.env.prod

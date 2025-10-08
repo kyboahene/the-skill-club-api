@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Query, Put } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Query } from '@nestjs/common';
 import { ApiCreatedResponse, ApiBadRequestResponse, ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 
 import { Auth } from '@/auth/decorator';
@@ -103,7 +103,7 @@ export class JobsController {
   }
 
   @Auth(['update_job', 'update_job_global'])
-  @Put(':id')
+  @Patch(':id')
   @ApiOperation({
     summary: "Updates a job by id and returns it",
     description: 'Required permissions: "update_job" or "update_job_global"',

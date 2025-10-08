@@ -2,7 +2,7 @@ import {
   Controller,
   Get,
   Post,
-  Put,
+  Patch,
   Body,
   Param,
   Query,
@@ -68,12 +68,12 @@ export class CandidateManagementController {
     return this.candidateManagementService.createEmailTemplate(createEmailTemplateDto);
   }
 
-  @Put('invitations')
+  @Patch('invitations')
   async updateInvitation(@Body() updateInvitationDto: UpdateInvitationDto) {
     return this.candidateManagementService.updateInvitation(updateInvitationDto);
   }
 
-  @Put('invitations/expire-old')
+  @Patch('invitations/expire-old')
   @HttpCode(HttpStatus.OK)
   async expireOldInvitations() {
     return this.candidateManagementService.expireOldInvitations();

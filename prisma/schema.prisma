@@ -955,6 +955,7 @@ model CandidateInvitation {
   remindersSent       Int                 @default(0)
   lastReminderSent    DateTime?
   invitationLink      String
+  invitationToken     String              @unique
   emailDeliveryStatus EmailDeliveryStatus @default(PENDING)
   createdAt           DateTime            @default(now())
   updatedAt           DateTime            @updatedAt

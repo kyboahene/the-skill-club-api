@@ -216,9 +216,7 @@ export class TestsService {
         },
         orderBy: { createdAt: 'desc' }
       });
-
-      console.log({ tests });
-      
+            
       return tests;
     } catch (error) {
       console.error("Error fetching tests bank by company:", error);

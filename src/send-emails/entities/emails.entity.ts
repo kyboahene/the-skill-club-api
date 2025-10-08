@@ -26,3 +26,14 @@ export class RequestReview extends MailConfig {
 export class EmailVerification extends MailConfig {
   verificationLink: string;
 }
+
+export class AssessmentInvitation extends MailConfig {
+  candidateName: string;
+  candidateEmail: string;
+  companyName: string;
+  invitationLink: string;
+  assessmentTitles: string[];
+  deadline?: string;
+  maxAttempts: number;
+  customMessage?: string;
+}
