@@ -1,14 +1,15 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
+
 
 // Enums
 enum UserStatus {
@@ -899,14 +900,14 @@ model CompanyAssessment {
 }
 
 model BrandingSettings {
-  id                 String   @id @default(cuid())
+  id                  String   @id @default(cuid())
   companyAssessmentId String   @unique
-  logoUrl            String?
-  themeColorHex      String?
-  fontFamily         String?
-  welcomeText        String?
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  logoUrl             String?
+  themeColorHex       String?
+  fontFamily          String?
+  welcomeText         String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 
   // Relations
   companyAssessment CompanyAssessment @relation(fields: [companyAssessmentId], references: [id], onDelete: Cascade)
@@ -915,18 +916,18 @@ model BrandingSettings {
 }
 
 model AntiCheatSettings {
-  id                     String   @id @default(cuid())
-  companyAssessmentId    String   @unique
-  blockCopyPaste         Boolean  @default(false)
-  disableRightClick      Boolean  @default(false)
-  detectWindowFocus      Boolean  @default(false)
-  detectTabSwitching     Boolean  @default(false)
-  enableFullscreen       Boolean  @default(false)
-  preventScreenCapture   Boolean  @default(false)
-  enableScreenRecording  Boolean  @default(false)
-  screenRecordingInterval Int?     // Interval in seconds
-  createdAt              DateTime @default(now())
-  updatedAt              DateTime @updatedAt
+  id                      String   @id @default(cuid())
+  companyAssessmentId     String   @unique
+  blockCopyPaste          Boolean  @default(false)
+  disableRightClick       Boolean  @default(false)
+  detectWindowFocus       Boolean  @default(false)
+  detectTabSwitching      Boolean  @default(false)
+  enableFullscreen        Boolean  @default(false)
+  preventScreenCapture    Boolean  @default(false)
+  enableScreenRecording   Boolean  @default(false)
+  screenRecordingInterval Int? // Interval in seconds
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
 
   // Relations
   companyAssessment CompanyAssessment @relation(fields: [companyAssessmentId], references: [id], onDelete: Cascade)
@@ -936,14 +937,12 @@ model AntiCheatSettings {
 
 // Candidate Management Models (unchanged)
 model CandidateInvitation {
-  id             String   @id @default(cuid())
-  candidateEmail String
-  candidateName  String
-  assessmentIds  String[]
-  companyId      String
-  invitedBy      String
-  invitedByName  String
-
+  id                  String              @id @default(cuid())
+  candidateEmail      String
+  candidateName       String
+  companyId           String
+  invitedBy           String
+  invitedByName       String
   status              InvitationStatus    @default(SENT)
   sentAt              DateTime            @default(now())
   openedAt            DateTime?

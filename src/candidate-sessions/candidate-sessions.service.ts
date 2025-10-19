@@ -7,6 +7,8 @@ import {
   CreateAnswerDto,
   GetCandidateSessionsDto,
 } from './dto/create-candidate-session.dto';
+import { CandidateSessionStatus, Prisma } from '@prisma/client';
+import { AssessmentSubmissionDto } from './dto/assessment-submission.dto';
 
 @Injectable()
 export class CandidateSessionsService {
@@ -15,38 +17,42 @@ export class CandidateSessionsService {
     private paginationService: PaginationService,
   ) {}
 
-  async getCandidateSessions(query: GetCandidateSessionsDto) {
-    const { limit = 10, candidateId, assessmentId, companyId, status } = query;
-    
-    const where: any = {};
-    
-    if (candidateId) where.candidateId = candidateId;
-    if (assessmentId) where.assessmentId = assessmentId;
-    if (companyId) where.companyId = companyId;
-    if (status) where.status = status;
+  async getCandidateSessions(query: GetCandidateSessionsDto, companyId: string) {
+    const { candidateId, assessmentId, status, page = 1, pageSize = 10, all } = query;
 
-    const sessions = await this.prisma.candidateSession.findMany({
+    console.log({companyId});
+    
+    const where: Prisma.CandidateSessionWhereInput = {
+      ...( companyId && { assessment: { company: { id: companyId } } }),
+      ...( assessmentId && { assessmentId }),
+      ...( candidateId && { candidateId }),
+      ...( status && { status: status as CandidateSessionStatus }),
+    };
+
+    const include: Prisma.CandidateSessionInclude = {
+      assessment: true,
+      answers: true,
+      scoreSummary: true,
+      violations: true,
+      deviceInfo: true,
+      sessionBehavior: true,
+      monitoring: true,
+      screenRecording: true,
+      trackingData: true,
+    };
+
+    const res = await this.paginationService.paginate('candidateSession', {
+      all,
+      page,
+      pageSize,
+      include,
       where,
-      take: limit,
       orderBy: {
         createdAt: 'desc',
       },
-      include: {
-        answers: true,
-        assessment: true,
-        scoreSummary: true,
-        deviceInfo: true,
-        sessionBehavior: true,
-        monitoring: true,
-        screenRecording: true,
-        trackingData: true,
-      },
     });
 
-    return {
-      sessions,
-      count: sessions.length,
-    };
+    return res;
   }
 
   async getCandidateSession(id: string) {
@@ -113,20 +119,44 @@ export class CandidateSessionsService {
     return scoreSummary;
   }
 
-  async createCandidateSession(createCandidateSessionDto: CreateCandidateSessionDto) {
-    const { candidateId, assessmentId, companyId, ...sessionData } = createCandidateSessionDto;
-
-    // Verify candidate exists
-    const candidate = await this.prisma.user.findUnique({
-      where: { id: candidateId },
+  async checkExistingSession(candidateEmail: string, assessmentId: string) {
+    const existingSession = await this.prisma.candidateSession.findFirst({
+      where: { 
+        candidateEmail, 
+        assessmentId 
+      },
+      include: {
+        assessment: true,
+        answers: true,
+        violations: true,
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
     });
 
-    if (!candidate) {
-      throw new NotFoundException(`Candidate with ID ${candidateId} not found`);
+    return existingSession || null;
+  }
+
+  async createCandidateSession(
+    createCandidateSessionDto: CreateCandidateSessionDto,
+    ipAddress?: string,
+    userAgent?: string,
+  ) {
+    const { assessmentId, candidateName, candidateEmail, candidatePhone } = createCandidateSessionDto;
+    
+
+    // Verify candidate exists
+    const candidate = await this.prisma.candidateSession.findFirst({
+      where: { candidateEmail, assessmentId },
+    });
+
+    if (candidate) {
+      throw new NotFoundException(`${candidateName} with email ${candidateEmail} already exists`);
     }
 
     // Verify assessment exists
-    const assessment = await this.prisma.talentAssessment.findUnique({
+    const assessment = await this.prisma.companyAssessment.findUnique({
       where: { id: assessmentId },
     });
 
@@ -134,23 +164,15 @@ export class CandidateSessionsService {
       throw new NotFoundException(`Assessment with ID ${assessmentId} not found`);
     }
 
-    // Verify company exists if provided
-    if (companyId) {
-      const company = await this.prisma.company.findUnique({
-        where: { id: companyId },
-      });
-
-      if (!company) {
-        throw new NotFoundException(`Company with ID ${companyId} not found`);
-      }
-    }
 
     return this.prisma.candidateSession.create({
       data: {
-        candidateEmail: candidate.email,
-        candidateName: candidate.name,
-        candidatePhone: candidate.phone,
+        candidateEmail,
+        candidateName,
+        candidatePhone,
         assessmentId,
+        ipAddress: ipAddress || null,
+        userAgent: userAgent || null,
       },
       include: {
         assessment: true,
@@ -208,14 +230,15 @@ export class CandidateSessionsService {
     search?: string;
     all?: boolean;
   }) {
-    // First, get all candidate sessions for the company
-    const whereClause: any = {
+
+    console.log({filters});
+    
+    const whereClause: Prisma.CandidateSessionWhereInput = {
       assessment: {
         ownerCompanyId: filters.companyId,
       },
     };
 
-    // Add search filter if provided
     if (filters.search) {
       whereClause.OR = [
         {
@@ -233,7 +256,6 @@ export class CandidateSessionsService {
       ];
     }
 
-    // Get all sessions first to aggregate them
     const allSessions = await this.prisma.candidateSession.findMany({
       where: whereClause,
       include: {
@@ -319,7 +341,7 @@ export class CandidateSessionsService {
     };
   }
 
-  async submitAssessment(sessionId: string, submitData: { answers: any[]; totalTimeSpent: number }) {
+  async submitAssessment(sessionId: string, data: AssessmentSubmissionDto) {
     const session = await this.prisma.candidateSession.findUnique({
       where: { id: sessionId },
     });
@@ -328,35 +350,133 @@ export class CandidateSessionsService {
       throw new NotFoundException(`Candidate session with ID ${sessionId} not found`);
     }
 
-    // Create all answers
-    const answerPromises = submitData.answers.map(answer => 
-      this.prisma.candidateAnswer.create({
-        data: {
+    // Use transaction to ensure all operations succeed or fail together
+    const result = await this.prisma.$transaction(async (tx) => {
+      // Create all answers
+      await tx.candidateAnswer.createMany({
+        data: data.answers.map(answer => ({
+          ...answer,
           sessionId,
-          questionId: answer.questionId,
-          response: answer.response,
-          timeSpent: answer.timeSpent || 0,
-          submittedAt: answer.submittedAt || new Date(),
+        })),
+      });
+
+      // Store violations if provided
+      if (data.violations && data.violations.length > 0) {
+        await tx.antiCheatViolation.createMany({
+          data: data.violations.map(violation => ({
+            ...violation,
+            sessionId,
+          })),
+        });
+      }
+
+      // Store device info if provided
+      if (data.deviceInfo) {
+        await tx.deviceInfo.upsert({
+          where: { sessionId },
+          update: data.deviceInfo,
+          create: {
+            sessionId,
+            ...data.deviceInfo,
+          },
+        });
+      }
+
+      // Store session behavior if provided
+      if (data.sessionBehavior) {
+        await tx.sessionBehavior.upsert({
+          where: { sessionId },
+          update: data.sessionBehavior,
+          create: {
+            sessionId,
+            ...data.sessionBehavior,
+          },
+        });
+      }
+
+      // Store tracking data if provided
+      if (data.trackingData && data.trackingData.length > 0) {
+        await tx.questionTracking.createMany({
+          data: data.trackingData.map(tracking => ({
+            sessionId,
+            questionId: tracking.questionId,
+            timeSpent: tracking.timeSpent,
+            attempts: tracking.attempts,
+            violations: {
+              focusLossCount: tracking.focusLossCount,
+              copyPasteAttempts: tracking.copyPasteAttempts,
+              rightClickAttempts: tracking.rightClickAttempts,
+            },
+            behaviorData: {
+              keystrokePatterns: tracking.keystrokePatterns,
+              mouseMovements: tracking.mouseMovements,
+            },
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          })),
+        });
+      }
+
+      // Update session status
+      const updatedSession = await tx.candidateSession.update({
+        where: { id: sessionId },
+        data: {
+          status: 'COMPLETED',
+          endTime: new Date(),
         },
-      })
-    );
+        include: {
+          answers: true,
+          scoreSummary: true,
+          violations: true,
+          deviceInfo: true,
+          sessionBehavior: true,
+          trackingData: true,
+        },
+      });
 
-    await Promise.all(answerPromises);
-
-    // Update session status
-    const updatedSession = await this.prisma.candidateSession.update({
-      where: { id: sessionId },
-      data: {
-        status: 'COMPLETED',
-        endTime: new Date(),
-      },
-      include: {
-        answers: true,
-        scoreSummary: true,
-      },
+      return updatedSession;
     });
 
-    return { success: true, session: updatedSession };
+    // Calculate verification score after successful submission
+    let verificationScore = null;
+    try {
+      verificationScore = await this.calculateVerificationScore(sessionId);
+      
+      // Store verification score in SessionBehavior
+      if (verificationScore) {
+        await this.prisma.sessionBehavior.upsert({
+          where: { sessionId },
+          update: {
+            // Add verification score fields to existing behavior data
+            suspiciousActivityScore: verificationScore.verificationScore,
+          },
+          create: {
+            sessionId,
+            focusLossCount: 0,
+            tabSwitchCount: 0,
+            rightClickAttempts: 0,
+            copyPasteAttempts: 0,
+            devToolsAttempts: 0,
+            fullscreenExits: 0,
+            screenCaptureAttempts: 0,
+            totalViolations: 0,
+            suspiciousActivityScore: verificationScore.verificationScore,
+            timeSpentPerQuestion: {},
+          },
+        });
+      }
+    } catch (error) {
+      console.error('Failed to calculate verification score:', error);
+      // Don't fail the submission if verification score calculation fails
+    }
+
+    return { 
+      success: true, 
+      session: result, 
+      verificationScore: verificationScore?.verificationScore || null,
+      trustLevel: verificationScore?.trustLevel || null,
+      riskFactors: verificationScore?.riskFactors || []
+    };
   }
 
   async calculateVerificationScore(sessionId: string) {
@@ -367,6 +487,7 @@ export class CandidateSessionsService {
         deviceInfo: true,
         sessionBehavior: true,
         monitoring: true,
+        trackingData: true,
       },
     });
 
@@ -378,14 +499,14 @@ export class CandidateSessionsService {
     let verificationScore = 100;
     const riskFactors = [];
 
-    // Deduct points for violations
+    // 1. Deduct points for violations
     if (session.violations && session.violations.length > 0) {
       const violationPenalty = session.violations.reduce((penalty, violation) => {
         switch (violation.severity) {
           case 'HIGH': return penalty + 15;
           case 'MEDIUM': return penalty + 8;
           case 'LOW': return penalty + 3;
-          default: return penalty;
+          default: return penalty + 5;
         }
       }, 0);
       
@@ -394,17 +515,100 @@ export class CandidateSessionsService {
         factor: 'Anti-cheat violations',
         impact: -violationPenalty,
         count: session.violations.length,
+        details: session.violations.map(v => v.type),
       });
     }
 
-    // Note: verificationScore would need to be added to schema
-    // For now, we'll return it without storing in CandidateSession
-    // Consider adding to ScoreSummary or SessionBehavior instead
+    // 2. Analyze device consistency
+    if (session.deviceInfo) {
+      let deviceRisk = 0;
+      const deviceFactors = [];
+
+      // Check for suspicious device characteristics
+      if (!session.deviceInfo.cookieEnabled) {
+        deviceRisk += 5;
+        deviceFactors.push('Cookies disabled');
+      }
+
+      if (deviceRisk > 0) {
+        verificationScore -= deviceRisk;
+        riskFactors.push({
+          factor: 'Device inconsistencies',
+          impact: -deviceRisk,
+          details: deviceFactors,
+        });
+      }
+    }
+
+    // 3. Analyze behavioral patterns
+    if (session.sessionBehavior) {
+      let behaviorRisk = 0;
+      const behaviorFactors = [];
+
+      // Excessive focus loss
+      if (session.sessionBehavior.focusLossCount > 10) {
+        const penalty = Math.min(20, session.sessionBehavior.focusLossCount * 2);
+        behaviorRisk += penalty;
+        behaviorFactors.push(`High focus loss: ${session.sessionBehavior.focusLossCount} times`);
+      }
+
+      // Excessive tab switching
+      if (session.sessionBehavior.tabSwitchCount > 5) {
+        const penalty = Math.min(15, session.sessionBehavior.tabSwitchCount * 3);
+        behaviorRisk += penalty;
+        behaviorFactors.push(`Excessive tab switching: ${session.sessionBehavior.tabSwitchCount} times`);
+      }
+
+      // Copy-paste attempts
+      if (session.sessionBehavior.copyPasteAttempts > 3) {
+        behaviorRisk += 10;
+        behaviorFactors.push(`Copy-paste attempts: ${session.sessionBehavior.copyPasteAttempts}`);
+      }
+
+      if (behaviorRisk > 0) {
+        verificationScore -= behaviorRisk;
+        riskFactors.push({
+          factor: 'Behavioral anomalies',
+          impact: -behaviorRisk,
+          details: behaviorFactors,
+        });
+      }
+    }
+
+    // 4. Analyze question-level tracking data
+    if (session.trackingData && session.trackingData.length > 0) {
+      let trackingRisk = 0;
+      const trackingFactors = [];
+
+      // Analyze patterns across questions
+      const avgViolationsPerQuestion = session.trackingData.reduce((sum, tracking) => {
+        const violations = tracking.violations as any;
+        return sum + (violations?.focusLossCount || 0) + (violations?.copyPasteAttempts || 0);
+      }, 0) / session.trackingData.length;
+
+      if (avgViolationsPerQuestion > 2) {
+        trackingRisk += 10;
+        trackingFactors.push(`High violation rate per question: ${avgViolationsPerQuestion.toFixed(1)}`);
+      }
+
+      if (trackingRisk > 0) {
+        verificationScore -= trackingRisk;
+        riskFactors.push({
+          factor: 'Question-level tracking anomalies',
+          impact: -trackingRisk,
+          details: trackingFactors,
+        });
+      }
+    }
+
+    const finalScore = Math.max(0, verificationScore);
+    const trustLevel = finalScore >= 80 ? 'HIGH' : finalScore >= 60 ? 'MEDIUM' : 'LOW';
 
     return {
-      verificationScore: Math.max(0, verificationScore),
+      verificationScore: finalScore,
       riskFactors,
-      trustLevel: verificationScore >= 80 ? 'HIGH' : verificationScore >= 60 ? 'MEDIUM' : 'LOW',
+      trustLevel,
+      calculatedAt: new Date(),
     };
   }
 

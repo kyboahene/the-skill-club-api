@@ -142,8 +142,12 @@ export class CandidateManagementService {
         status: {
           in: ['SENT', 'OPENED', 'STARTED'],
         },
-        assessmentIds: {
-          hasSome: assessmentIds,
+        assessments: {
+          some:   {
+            id: {
+              in: assessmentIds,
+            },
+          },
         },
       },
       include: {
@@ -218,13 +222,15 @@ export class CandidateManagementService {
       // Generate unique invitation token
       const invitationToken = this.generateInvitationToken();
       const companySlug = this.generateCompanySlug(company.name);
-      const invitationLink = `${process.env.APP_URL}/${companySlug}/assessment/invite/${invitationToken}`;
+      const invitationLink = `${process.env.APP_URL}/${companySlug}/assessment/take/${invitationToken}`;
 
       const invitation = await this.prisma.candidateInvitation.create({
         data: {
           candidateEmail: email,
           candidateName: name,
-          assessmentIds,
+          assessments: {
+            connect: assessmentIds.map((id) => ({ id })),
+          },
           companyId,
           invitedBy,
           invitedByName,

@@ -8,22 +8,65 @@ import {
   Query,
   HttpStatus,
   HttpCode,
+  Req,
 } from '@nestjs/common';
+import { Request } from 'express';
 import { CandidateSessionsService } from './candidate-sessions.service';
+import { IpUtilsService } from '../shared/utils/ip-utils.service';
 import {
   CreateCandidateSessionDto,
   UpdateCandidateSessionDto,
   CreateAnswerDto,
   GetCandidateSessionsDto,
 } from './dto/create-candidate-session.dto';
+import { Auth } from '@/auth/decorator';
+import { GetUser } from '@/auth/decorator/get-user.decorator';
+import { CompanyEntity } from '@/companies/entities';
+import { AssessmentSubmissionDto } from './dto/assessment-submission.dto';
+import { UserWithRelationsEntity } from '@/users/entities/user-with-relations.entity';
+import { ApiBadRequestResponse, ApiCreatedResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 
+@ApiTags('Candidate Sessions')
 @Controller('candidate-sessions')
 export class CandidateSessionsController {
-  constructor(private readonly candidateSessionsService: CandidateSessionsService) {}
+  constructor(
+    private readonly candidateSessionsService: CandidateSessionsService,
+    private readonly ipUtils: IpUtilsService,
+  ) {}
+  
+  // IMPORTANT: Static routes MUST come before parameterized routes
+  @Auth(['get_company_assessment'])
+  @Get('aggregated')
+  @ApiOperation({
+    summary: 'Retrieves aggregated candidate sessions',
+    description: 'Required permissions: "get_company_assessment"',
+  })
+  @ApiCreatedResponse({
+    description: 'Returns aggregated candidate sessions',
+  })
+  @ApiBadRequestResponse({
+    description: 'Aggregated candidate sessions cannot be retrieved. Try again!',
+  })
+  @HttpCode(HttpStatus.OK)
+  async getAggregatedCandidates(@Query() query: GetCandidateSessionsDto, @GetUser("") user: UserWithRelationsEntity) {
+    return this.candidateSessionsService.getAssessmentCandidateSessions({
+      companyId: user.company.id,
+      page: query.page || 1,
+      pageSize: query.pageSize || 10,
+      search: query.search,
+      all: query.all,
+    });
+  }
 
+  @Get('client-ip')
+  async getClientIp(@Req() request: Request) {
+    return this.ipUtils.getDetailedIpInfo(request);
+  }
+
+  @Auth(["get_company_assessment"])
   @Get()
-  async getCandidateSessions(@Query() query: GetCandidateSessionsDto) {
-    return this.candidateSessionsService.getCandidateSessions(query);
+  async getCandidateSessions(@Query() query: GetCandidateSessionsDto, @GetUser ("company") company: CompanyEntity) {
+    return this.candidateSessionsService.getCandidateSessions(query, company.id);
   }
 
   @Get(':id')
@@ -41,10 +84,41 @@ export class CandidateSessionsController {
     return this.candidateSessionsService.getSessionScoreSummary(sessionId);
   }
 
+  @Post('check-existing')
+  @HttpCode(HttpStatus.OK)
+  async checkExistingSession(
+    @Body() body: { candidateEmail: string; assessmentId: string },
+  ) {
+    return this.candidateSessionsService.checkExistingSession(
+      body.candidateEmail,
+      body.assessmentId,
+    );
+  }
+
+  @Post('ai-scoring')
+  @HttpCode(HttpStatus.OK)
+  async scoreWithAI(@Body() scoringData: any) {
+    // Placeholder for AI scoring - implement when ready
+    return {
+      score: 0,
+      feedback: 'AI scoring not yet implemented',
+    };
+  }
+
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  async createCandidateSession(@Body() createCandidateSessionDto: CreateCandidateSessionDto) {
-    return this.candidateSessionsService.createCandidateSession(createCandidateSessionDto);
+  async createCandidateSession(
+    @Body() createCandidateSessionDto: CreateCandidateSessionDto,
+    @Req() request: Request,
+  ) {
+    const ipAddress = this.ipUtils.getClientIp(request);
+    const userAgent = request.headers['user-agent'] || '';
+    
+    return this.candidateSessionsService.createCandidateSession(
+      createCandidateSessionDto,
+      ipAddress,
+      userAgent,
+    );
   }
 
   @Post(':id/answers')
@@ -65,9 +139,9 @@ export class CandidateSessionsController {
   @HttpCode(HttpStatus.OK)
   async submitAssessment(
     @Param('id') sessionId: string,
-    @Body() submitData: { answers: any[]; totalTimeSpent: number },
+    @Body() data: AssessmentSubmissionDto,
   ) {
-    return this.candidateSessionsService.submitAssessment(sessionId, submitData);
+    return this.candidateSessionsService.submitAssessment(sessionId, data);
   }
 
   @Post(':id/calculate-verification-score')

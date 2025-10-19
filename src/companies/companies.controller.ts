@@ -500,6 +500,7 @@ export class CompaniesController {
     description: 'Candidate sessions cannot be retrieved. Try again!',
   })
   async getCompanyCandidateSessions(
+    @GetUser("") user: UserWithRelationsEntity,
     @Query('companyId') companyId: string,
     @Query('page') page: string = '1',
     @Query('pageSize') pageSize: string = '10',
@@ -507,7 +508,7 @@ export class CompaniesController {
     @Query('search') search?: string,
   ) {
     return this.candidateSessionsService.getAssessmentCandidateSessions({
-      companyId,
+      companyId: companyId || user.company.id,
       page: +page,
       pageSize: +pageSize,
       all: JSON.parse(all),

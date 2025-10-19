@@ -177,7 +177,7 @@ export class CompanyAssessmentService {
           },
         }),
         languageCodes: data.languageCodes || [],
-        timeLimitSeconds: data.timeLimitSeconds,
+        timeLimitSeconds: data.timeLimitSeconds || data.timeLimitMinutes *  60,
         timeLimitMinutes: data.timeLimitMinutes,
         passMark: data.passMark,
         expiresAt: data.expiresAt,
@@ -440,7 +440,9 @@ export class CompanyAssessmentService {
         data: {
           candidateEmail: data.candidateEmail,
           candidateName: data.candidateName,
-          assessmentIds: data.assessmentIds,
+          assessments: {
+            connect: data.assessmentIds.map((id) => ({ id })),
+          },
           companyId: data.companyId,
           invitedBy: data.invitedBy,
           invitedByName: data.invitedByName,
@@ -515,13 +517,15 @@ export class CompanyAssessmentService {
 
             // Generate unique invitation token for each candidate
             const invitationToken = this.generateInvitationToken();
-            const invitationLink = `${process.env.FRONTEND_URL}/${companySlug}/assessment/invite/${invitationToken}`;
+            const invitationLink = `${process.env.FRONTEND_URL}/${companySlug}/assessment/take/${invitationToken}`;
 
             const invitation = await prisma.candidateInvitation.create({
               data: {
                 candidateEmail: candidate.candidateEmail,
                 candidateName: candidate.candidateName,
-                assessmentIds: data.assessmentIds,
+                assessments: {
+                  connect: data.assessmentIds.map((id) => ({ id })),
+                },
                 companyId: data.companyId,
                 invitedBy: data.invitedBy,
                 invitedByName: data.invitedByName,
@@ -540,6 +544,8 @@ export class CompanyAssessmentService {
 
             createdInvitations.push(invitation);
           } catch (error) {
+
+            console.error("Error creating company assessment invitation:", error);
             if (error instanceof PrismaClientKnownRequestError && error.code === 'P2002') {
               errors.push({
                 email: candidate.candidateEmail,
@@ -732,16 +738,30 @@ export class CompanyAssessmentService {
           },
         },
         assessments: {
-          select: {
-            id: true,
-            title: true,
-            description: true,
-            timeLimitSeconds: true,
-            timeLimitMinutes: true,
-            passMark: true,
-            maxTests: true,
-            maxCustomQuestions: true,
-            languageCodes: true,
+          include: {
+            antiCheatSettings: true,
+            customQuestions:  {
+              include: {
+                test:  {
+                  include: {
+                    questions: true,
+                  }
+                },
+              }
+            },
+            assessmentTests: {
+              include: {
+                test:  {
+                  include: {
+                    questions: true,
+                  }
+                },
+                TestConfig: true,
+              }
+            },
+            brandingSettings: true,
+            company: true,
+            creator: true,
           },
         },
       },
@@ -794,8 +814,12 @@ export class CompanyAssessmentService {
       where: {
         candidateEmail,
         companyId,
-        assessmentIds: {
-          hasEvery: assessmentIds,
+        assessments: {
+          some: {
+            id: {
+              in: assessmentIds,
+            },
+          },
         },
         status: {
           in: [InvitationStatus.SENT, InvitationStatus.OPENED, InvitationStatus.STARTED],

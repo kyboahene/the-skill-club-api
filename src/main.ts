@@ -8,6 +8,10 @@ import { PrismaClientExceptionFilter } from './prisma-client-exception/prisma-cl
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { cors: true });
   
+  // Trust proxy - important for correctly detecting IP addresses behind load balancers/proxies
+  const expressApp = app.getHttpAdapter().getInstance();
+  expressApp.set('trust proxy', true);
+  
   // Global validation pipe
   app.useGlobalPipes(
     new ValidationPipe({
@@ -36,7 +40,7 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('docs', app, document);
 
-  const port = process.env.PORT || 3000;
+  const port = process.env.PORT || 5000;
   await app.listen(port);
   
   console.log(`🚀 Application is running on: http://localhost:${port}`);

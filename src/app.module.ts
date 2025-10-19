@@ -26,6 +26,7 @@ import { TestsModule } from './tests/tests.module';
 import { SkillsModule } from './skills/skills.module';
 import { FileUploadModule } from './file-upload/file-upload.module';
 import { PdfModule } from './pdf/pdf.module';
+import { SharedModule } from './shared/shared.module';
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { PdfModule } from './pdf/pdf.module';
       isGlobal: true,
     }),
     EventEmitterModule.forRoot(),
+    SharedModule,
     MailerModule.forRoot({
       transport: {
         host: process.env.EMAIL_HOST,

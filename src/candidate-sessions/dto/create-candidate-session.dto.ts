@@ -1,38 +1,42 @@
+import { ApiProperty, PartialType } from '@nestjs/swagger';
 import { IsString, IsOptional, IsObject, IsEnum, IsArray, IsNumber, IsBoolean } from 'class-validator';
 
 export class CreateCandidateSessionDto {
+  @ApiProperty({
+    example: 'John Doe',
+  })
   @IsString()
-  candidateId: string;
+  candidateName: string;
 
+  @ApiProperty({
+    example: 'john.doe@example.com',
+  })
   @IsString()
   assessmentId: string;
 
+  @ApiProperty({
+    example: 'john.doe@example.com',
+  })
+  @IsString()
+  candidateEmail: string;
+
+  @ApiProperty({
+    example: '1234567890',
+  })
   @IsOptional()
   @IsString()
-  companyId?: string;
+  candidatePhone?: string;
 
+  @ApiProperty({
+    example: 'NOT_STARTED',
+    enum: ['NOT_STARTED', 'IN_PROGRESS', 'COMPLETED', 'ABANDONED'],
+  })
   @IsOptional()
   @IsEnum(['NOT_STARTED', 'IN_PROGRESS', 'COMPLETED', 'ABANDONED'])
   status?: 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED' | 'ABANDONED';
-
-  @IsOptional()
-  @IsObject()
-  deviceInfo?: any;
-
-  @IsOptional()
-  @IsObject()
-  browserInfo?: any;
-
-  @IsOptional()
-  @IsString()
-  ipAddress?: string;
 }
 
-export class UpdateCandidateSessionDto {
-  @IsOptional()
-  @IsEnum(['NOT_STARTED', 'IN_PROGRESS', 'COMPLETED', 'ABANDONED'])
-  status?: 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED' | 'ABANDONED';
-
+export class UpdateCandidateSessionDto extends PartialType(CreateCandidateSessionDto) {
   @IsOptional()
   @IsString()
   startedAt?: string;
@@ -83,6 +87,19 @@ export class CreateAnswerDto {
 }
 
 export class GetCandidateSessionsDto {
+  @IsOptional()
+  page?: number;
+
+  @IsOptional()
+  pageSize?: number;
+
+  @IsOptional()
+  all?: boolean;
+
+  @IsOptional()
+  @IsString()
+  search?: string;
+
   @IsOptional()
   limit?: number;
 

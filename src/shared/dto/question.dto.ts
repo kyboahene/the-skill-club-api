@@ -12,14 +12,6 @@ import {
 import { QuestionType } from '@prisma/client';
 
 export class CreateQuestionDto {
-  @IsOptional()
-  @IsString()
-  testId?: string;
-
-  @IsOptional()
-  @IsString()
-  assessmentId?: string;
-
   @IsEnum(QuestionType)
   type: QuestionType;
 
