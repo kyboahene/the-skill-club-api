@@ -5,9 +5,9 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 COPY prisma ./prisma/
 
-RUN npm ci && npm cache clean --force
+RUN npm ci
 RUN apk add --no-cache curl
-
+RUN npm i -g npm@11.6.2
 COPY . .
 
 RUN npx prisma generate
