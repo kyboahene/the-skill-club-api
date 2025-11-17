@@ -2,28 +2,24 @@ FROM node:18-alpine
 
 WORKDIR /app
 
-# Copy package files
-COPY package*.json ./
+COPY package.json package-lock.json ./
 COPY prisma ./prisma/
 
-# Install dependencies
-RUN npm ci --only=production && npm cache clean --force
+RUN npm ci && npm cache clean --force
+RUN apk add --no-cache curl
 
-# Copy source code
 COPY . .
 
-# Generate Prisma client
 RUN npx prisma generate
 
-# Build the application
 RUN npm run build
+RUN npm prune --production
 
-# Expose port
+ENV PORT=3000
 EXPOSE 3000
 
-# Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD curl -f http://localhost:3000/health || exit 1
+  CMD curl -sf http://localhost:3000/health || exit 1
 
 # Start the application
 CMD ["npm", "run", "start:prod"]
