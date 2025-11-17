@@ -1,11 +1,11 @@
-FROM node:18-alpine
+FROM node:20-alpine
 
 WORKDIR /app
 
 COPY package.json package-lock.json ./
 COPY prisma ./prisma/
 
-RUN npm ci
+RUN npm install --omit=dev
 RUN apk add --no-cache curl
 RUN npm i -g npm@11.6.2
 COPY . .
