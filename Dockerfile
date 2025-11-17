@@ -5,7 +5,7 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 COPY prisma ./prisma/
 
-RUN npm install --omit=dev
+RUN npm install
 RUN apk add --no-cache curl
 RUN npm i -g npm@11.6.2
 COPY . .
