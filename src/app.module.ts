@@ -39,15 +39,19 @@ import { SharedModule } from './shared/shared.module';
       transport: {
         host: process.env.EMAIL_HOST,
         port: Number(process.env.EMAIL_PORT),
+        // Gmail: secure=true for 465, secure=false for 587 (STARTTLS)
+        secure: Number(process.env.EMAIL_PORT) === 465,
         auth: {
-          pass: process.env.EMAIL_PASS,
           user: process.env.EMAIL_ADDRESS,
+          pass: process.env.EMAIL_PASS,
+        },
+        // Relax TLS in local dev to avoid self-signed/CA issues
+        tls: {
+          rejectUnauthorized: false,
         },
       },
       defaults: {
-        from: {
-          from: `${process.env.APP_NAME} <${process.env.EMAIL_ADDRESS}>`,
-        },
+        from: `${process.env.APP_NAME ?? 'The Skill Club'} <${process.env.EMAIL_ADDRESS}>`,
       },
       template: {
         dir: join(__dirname, '..', 'mail-templates'),

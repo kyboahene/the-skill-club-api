@@ -33,32 +33,61 @@ export class AuthService {
 
   async registerTalent(dto: RegisterDto) {
     try {
-      await this.usersService.findByEmail(dto.email);
+      // Check if user already exists
+      const existing = await this.usersService.findByEmail(dto.email);
+      if (existing) {
+        throw new ConflictException('User already exists');
+      }
 
-      if (dto.password === dto.confirmPassword) {
+      // Validate password match
+      if (dto.password !== dto.confirmPassword) {
         throw new BadRequestException('Passwords are not the same.');
       }
 
       // Hash password
       const hashedPassword = await bcrypt.hash(dto.password, 10);
 
-      const user = await this.usersService.createUser({
-        email: dto.email,
-        fullName: dto.firstName + ' ' + dto.lastName,
-        password: hashedPassword,
-        status: UserStatus.PENDING,
+      // Execute all DB operations atomically
+      const createdUser = await this.prisma.$transaction(async (tx) => {
+        const user = await tx.user.create({
+          data: {
+            email: dto.email,
+            name: dto.firstName + ' ' + dto.lastName,
+            password: hashedPassword,
+            status: UserStatus.PENDING,
+          },
+        });
+
+        await tx.talent.create({
+          data: { userId: user.id },
+        });
+
+        // Assign verified talent role directly within transaction
+        const verifiedTalentRole = await tx.role.findFirst({
+          where: {
+            name: 'verified_talent',
+            context: 'TALENT',
+            contextId: null,
+          },
+          select: { id: true },
+        });
+
+        if (!verifiedTalentRole) {
+          throw new BadRequestException('Talent role template not found');
+        }
+
+        await tx.user.update({
+          where: { id: user.id },
+          data: {
+            roles: { connect: { id: verifiedTalentRole.id } },
+          },
+        });
+
+        return user;
       });
 
-      // Create talent profile
-      await this.prisma.talent.create({
-        data: { userId: user.id },
-      });
-
-      // ASSIGN TALENT ROLE
-      await this.rolesService.assignTalentRole(user.id, 'talent');
-
-      // Send verification email
-      await this.sendVerificationEmail(user.email);
+      // Send verification email outside transaction
+      await this.sendVerificationEmail(createdUser.email);
     } catch (error) {
       throw error;
     }
@@ -336,8 +365,11 @@ export class AuthService {
 
   async forgotPassword(data: ForgotPaswordDto) {
     const user = await this.usersService.findByEmail(data.email);
+    if (!user) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
 
-    const token = await this.generateTokens(user.id, '10mins');
+    const token = await this.generateTokens(user.id, user.email, 'password_reset');
     const resetPasswordUrl = `${this.config.get(
       'FRONTEND_URL',
     )}/auth/resetPassword?token=${token.accessToken}`;
@@ -373,7 +405,7 @@ export class AuthService {
     const hashedPassword = await bcrypt.hash(passwordResetDto.password, 10);
 
     await this.prisma.user.update({
-      where: { id: data.id },
+      where: { id: data.sub },
       data: { password: hashedPassword },
     });
 

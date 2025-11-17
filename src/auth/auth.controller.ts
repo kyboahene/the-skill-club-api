@@ -17,7 +17,7 @@ import {
 } from '@nestjs/swagger';
 import { JwtGuard } from './guard';
 import { AuthService } from './auth.service';
-import { LoginDto, RegisterDto, AuthResponseDto, RegisterCompanyDto } from './dto';
+import { LoginDto, RegisterDto, AuthResponseDto, RegisterCompanyDto, ForgotPaswordDto } from './dto';
 
 @ApiTags('Authentication')
 @Controller('auth')
@@ -35,6 +35,17 @@ export class AuthController {
   @ApiResponse({ status: 400, description: 'Bad Request' })
   @ApiResponse({ status: 409, description: 'User already exists' })
   async registerTalent(@Body() registerDto: RegisterDto) {
+    return this.authService.registerTalent(registerDto);
+  }
+
+  // Talent-specific routes (aliases for clarity)
+  @Post('talent/signup')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Talent signup' })
+  @ApiResponse({ status: 201, description: 'Talent registered' })
+  @ApiResponse({ status: 400, description: 'Bad Request' })
+  @ApiResponse({ status: 409, description: 'User already exists' })
+  async talentSignup(@Body() registerDto: RegisterDto) {
     return this.authService.registerTalent(registerDto);
   }
   
@@ -63,6 +74,23 @@ export class AuthController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async login(@Body() loginDto: LoginDto) {
     return this.authService.login(loginDto);
+  }
+
+  @Post('talent/login')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Talent login' })
+  @ApiResponse({ status: 200, description: 'Talent logged in' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async talentLogin(@Body() loginDto: LoginDto) {
+    return this.authService.login(loginDto);
+  }
+
+  @Post('talent/forgot-password')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Talent password reset link' })
+  @ApiResponse({ status: 200, description: 'Reset link sent' })
+  async talentForgotPassword(@Body() dto: ForgotPaswordDto) {
+    return this.authService.forgotPassword(dto);
   }
 
   @Post('logout')

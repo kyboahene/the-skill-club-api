@@ -1,4 +1,4 @@
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import { Injectable, InternalServerErrorException, ServiceUnavailableException, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
 import * as FormData from 'form-data';
@@ -7,15 +7,21 @@ import * as FormData from 'form-data';
 export class PdfService {
   private readonly apiKey: string;
   private readonly baseUrl = 'https://api.cloudconvert.com/v2';
+  private readonly enabled: boolean;
 
   constructor(private configService: ConfigService) {
     this.apiKey = this.configService.get<string>('CLOUDCONVERT_API_KEY');
-    if (!this.apiKey) {
-      throw new Error('CLOUDCONVERT_API_KEY is not configured');
+    this.enabled = !!this.apiKey;
+    if (!this.enabled) {
+      Logger.warn('CLOUDCONVERT_API_KEY is not set — PDF extraction is disabled.', PdfService.name);
     }
   }
 
   async extractTextFromPdf(buffer: Buffer): Promise<string> {
+    if (!this.enabled) {
+      // Avoid crashing the app when the key is missing; fail fast per-request
+      throw new ServiceUnavailableException('PDF extraction is disabled: missing CLOUDCONVERT_API_KEY');
+    }
     try {
       // Step 1: Create a job
       const jobResponse = await axios.post(
