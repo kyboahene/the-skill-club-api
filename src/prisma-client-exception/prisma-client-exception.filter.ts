@@ -90,10 +90,26 @@ export class PrismaClientExceptionFilter extends BaseExceptionFilter {
         error = 'Not Found';
         break;
 
+      case 'P2028': // Interactive transaction timeout/closed
+        status = HttpStatus.SERVICE_UNAVAILABLE;
+        message = 'Transaction timeout or closed. Please retry. If this persists, increase interactive transaction timeout or reduce work inside the transaction.';
+        error = 'Service Unavailable';
+        break;
+
       default:
         // For unhandled Prisma errors, use the default handler
         console.log(`Unhandled Prisma error code: ${exception.code}`);
-        super.catch(exception, host);
+        if (response) {
+          response.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+            statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+            error: 'Internal Server Error',
+            message: 'An unexpected database error occurred',
+            timestamp: new Date().toISOString(),
+            path: ctx.getRequest().url,
+          });
+        } else {
+          super.catch(exception, host);
+        }
         return;
     }
 

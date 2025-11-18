@@ -84,7 +84,7 @@ export class AuthService {
         });
 
         return user;
-      });
+      }, { timeout: 15000, maxWait: 5000 });
 
       // Send verification email outside transaction
       await this.sendVerificationEmail(createdUser.email);
