@@ -9,7 +9,7 @@
     "seed": "ts-node prisma/seed.ts"
   },
   "scripts": {
-    "build": "nest build",
+    "build": "npx prisma generate && nest build",
     "postbuild": "cp -R mail-templates dist/mail-templates",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
@@ -25,6 +25,7 @@
     "db:dev:up": "docker-compose up the-skill-club-api -d",
     "db:dev:down": "docker-compose down",
     "db:dev:restart": "npm run db:dev:down && npm run db:dev:up",
+    "prisma": "6.19.0",
     "prisma:migrate": "npx prisma migrate dev",
     "prisma:generate": "npx prisma generate",
     "prisma:seed": "npx prisma db seed",
@@ -42,7 +43,7 @@
     "@nestjs/passport": "^11.0.4",
     "@nestjs/platform-express": "^11.1.6",
     "@nestjs/swagger": "^11.0.2",
-    "@prisma/client": "^6.16.2",
+    "@prisma/client": "^6.19.0",
     "@thallesp/nestjs-better-auth": "^1.0.3",
     "better-auth": "^1.2.8",
     "@types/multer": "^2.0.0",
