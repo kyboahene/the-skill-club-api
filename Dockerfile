@@ -5,6 +5,7 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 COPY prisma ./prisma/
 
+ENV DATABASE_URL=postgresql://postgres:password@localhost:5432/starter_db?schema=public
 RUN npm install
 RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 RUN npm i -g npm@11.6.2
