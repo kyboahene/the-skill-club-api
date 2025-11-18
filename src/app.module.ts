@@ -8,6 +8,8 @@ import { HandlebarsAdapter } from '@nestjs-modules/mailer/dist/adapters/handleba
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
+ 
+import { BetterAuthController } from './better-auth/auth.controller';
 import { UsersModule } from './users/users.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { SmsModule } from './sms/sms.module';
@@ -78,7 +80,7 @@ import { SharedModule } from './shared/shared.module';
     FileUploadModule,
     PdfModule
   ],
-  controllers: [AppController],
+  controllers: [AppController, BetterAuthController],
   providers: [AppService],
 })
 export class AppModule {}

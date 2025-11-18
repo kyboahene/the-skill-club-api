@@ -6,7 +6,7 @@ import { AppModule } from './app.module';
 import { PrismaClientExceptionFilter } from './prisma-client-exception/prisma-client-exception.filter';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, { cors: true });
+  const app = await NestFactory.create(AppModule, { cors: true, bodyParser: false });
   
   // Trust proxy - important for correctly detecting IP addresses behind load balancers/proxies
   const expressApp = app.getHttpAdapter().getInstance();
