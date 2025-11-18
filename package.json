@@ -9,7 +9,7 @@
     "seed": "ts-node prisma/seed.ts"
   },
   "scripts": {
-    "build": "npx prisma generate && nest build",
+    "build": "nest build",
     "postbuild": "cp -R mail-templates dist/mail-templates",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
