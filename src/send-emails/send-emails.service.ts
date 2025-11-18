@@ -1,6 +1,9 @@
 import { Queue } from 'bull';
 import { InjectQueue } from '@nestjs/bull';
 import { Injectable } from '@nestjs/common';
+import * as fs from 'fs';
+import * as path from 'path';
+import * as Handlebars from 'handlebars';
 import { OnEvent } from '@nestjs/event-emitter';
 import { MailerService } from '@nestjs-modules/mailer';
 
@@ -33,91 +36,100 @@ export class SendEmailsService {
     @InjectQueue(NOTIFICATION_QUEUE) private sendNotificationQueue: Queue
   ) { }
 
+  private renderTemplate(templateName: string, context: Record<string, any>) {
+    const templatePath = path.join(__dirname, '..', '..', 'mail-templates', `${templateName}.hbs`);
+    const source = fs.readFileSync(templatePath, 'utf8');
+    const compiled = Handlebars.compile(source);
+    return compiled(context);
+  }
+
+  private async sendTemplateEmail(to: string, subject: string, template: string, context: Record<string, any>) {
+    const resendKey = process.env.RESEND_API_KEY;
+    if (resendKey) {
+      const html = this.renderTemplate(template, context);
+      const resp = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${resendKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          from: process.env.EMAIL_ADDRESS || 'no-reply@skillclub.dev',
+          to,
+          subject,
+          html,
+        })
+      });
+      if (!resp.ok) {
+        const text = await resp.text();
+        throw new Error(`Resend send failed: ${resp.status} ${text}`);
+      }
+      return;
+    }
+    await this.mailService.sendMail({
+      to,
+      from: process.env.EMAIL_ADDRESS,
+      subject,
+      template,
+      context,
+    });
+  }
+
   @OnEvent('member.created')
   async sendMemberDetails(data: MemberDetail) {
-    await this.mailService.sendMail({
-      to: data.to,
-      from: process.env.EMAIL_ADDRESS,
-      subject: data.subject,
-      template: data.template,
-      context: {
-        email: data.to,
-        name: data.name,
-        title: data.subject,
-        password: data.password,
-        baseURL: process.env.BASE_URL,
-        year: new Date().getFullYear(),
-      },
+    await this.sendTemplateEmail(data.to, data.subject, data.template, {
+      email: data.to,
+      name: data.name,
+      title: data.subject,
+      password: data.password,
+      baseURL: process.env.BASE_URL,
+      year: new Date().getFullYear(),
     });
   }
 
   @OnEvent('password.reset')
   async sendResetPasswordLink(data: PasswordReset) {
-    await this.mailService.sendMail({
-      to: data.to,
-      from: process.env.EMAIL_ADDRESS,
-      subject: data.subject,
-      template: data.template,
-      context: {
-        name: data.name,
-        resetLink: data.resetLink,
-        email: data.to,
-        year: new Date().getFullYear(),
-        title: data.subject,
-        baseURL: process.env.BASE_URL,
-      },
+    await this.sendTemplateEmail(data.to, data.subject, data.template, {
+      name: data.name,
+      resetLink: data.resetLink,
+      email: data.to,
+      year: new Date().getFullYear(),
+      title: data.subject,
+      baseURL: process.env.BASE_URL,
     });
   }
 
   @OnEvent('email.verification')
   async sendEmailVerification(data: EmailVerification) {
-    await this.mailService.sendMail({
-      to: data.to,
-      from: process.env.EMAIL_ADDRESS,
-      subject: data.subject,
-      template: data.template,
-      context: {
-        name: data.name,
-        verificationLink: data.verificationLink,
-        email: data.to,
-        year: new Date().getFullYear(),
-        title: data.subject,
-        baseURL: process.env.BASE_URL,
-      },
+    await this.sendTemplateEmail(data.to, data.subject, data.template, {
+      name: data.name,
+      verificationLink: data.verificationLink,
+      email: data.to,
+      year: new Date().getFullYear(),
+      title: data.subject,
+      baseURL: process.env.BASE_URL,
     });
   }
 
   @OnEvent('approval.process.notice')
   async sendDisapprovalNotification(data: RequestReview) {
-    await this.mailService.sendMail({
-      to: data.to,
-      from: process.env.EMAIL_ADDRESS,
-      subject: data.subject,
-      template: data.template,
-      context: {
-        name: data.name,
-        title: data.subject,
-        year: new Date().getFullYear(),
-        baseURL: process.env.BASE_URL,
-        requestType: data?.requestType,
-      },
+    await this.sendTemplateEmail(data.to, data.subject, data.template, {
+      name: data.name,
+      title: data.subject,
+      year: new Date().getFullYear(),
+      baseURL: process.env.BASE_URL,
+      requestType: data?.requestType,
     });
   }
 
   @OnEvent('general.email.notice')
   async sendGeneralNotification(data: GeneralInformation) {
-    await this.mailService.sendMail({
-      to: data.to,
-      subject: data.subject,
-      from: process.env.EMAIL_ADDRESS,
-      template: data.template,
-      context: {
-        name: data.name,
-        title: data.subject,
-        message: data.message,
-        baseURL: process.env.BASE_URL,
-        year: new Date().getFullYear(),
-      },
+    await this.sendTemplateEmail(data.to, data.subject, data.template, {
+      name: data.name,
+      title: data.subject,
+      message: data.message,
+      baseURL: process.env.BASE_URL,
+      year: new Date().getFullYear(),
     });
   }
 
@@ -130,24 +142,18 @@ export class SendEmailsService {
 
   @OnEvent('assessment.invitation')
   async sendAssessmentInvitation(data: AssessmentInvitation) {
-    await this.mailService.sendMail({
-      to: data.candidateEmail,
-      from: process.env.EMAIL_ADDRESS,
-      subject: data.subject,
-      template: data.template,
-      context: {
-        candidateName: data.candidateName,
-        candidateEmail: data.candidateEmail,
-        companyName: data.companyName,
-        invitationLink: data.invitationLink,
-        assessmentTitles: data.assessmentTitles,
-        deadline: data.deadline,
-        maxAttempts: data.maxAttempts,
-        customMessage: data.customMessage,
-        title: data.subject,
-        year: new Date().getFullYear(),
-        baseURL: process.env.BASE_URL,
-      },
+    await this.sendTemplateEmail(data.candidateEmail, data.subject, data.template, {
+      candidateName: data.candidateName,
+      candidateEmail: data.candidateEmail,
+      companyName: data.companyName,
+      invitationLink: data.invitationLink,
+      assessmentTitles: data.assessmentTitles,
+      deadline: data.deadline,
+      maxAttempts: data.maxAttempts,
+      customMessage: data.customMessage,
+      title: data.subject,
+      year: new Date().getFullYear(),
+      baseURL: process.env.BASE_URL,
     });
   }
 
