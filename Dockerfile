@@ -12,7 +12,6 @@ RUN npm i -g npm@11.6.2
 COPY . .
 
 ENV PRISMA_ENGINES_CHECKSUM_IGNORE_MISSING=1
-RUN npx prisma generate
 
 RUN npm run build
 RUN npm prune --production
