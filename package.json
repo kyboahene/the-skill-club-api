@@ -10,7 +10,7 @@
   },
   "scripts": {
     "build": "npx prisma generate && nest build",
-    "postbuild": "cp -R mail-templates dist/mail-templates",
+    "postbuild": "node -e \"const fs=require('fs'),path=require('path');const src='mail-templates',dest=path.join('dist','mail-templates');fs.rmSync(dest,{recursive:true,force:true});fs.mkdirSync(dest,{recursive:true});function cp(dir,base){for(const f of fs.readdirSync(dir,{withFileTypes:true})){const s=path.join(dir,f.name);const d=path.join(base,f.name);if(f.isDirectory()){fs.mkdirSync(d,{recursive:true});cp(s,d);}else{fs.copyFileSync(s,d);}}}cp(src,dest);\"",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
     "start:dev": "nest start --watch",

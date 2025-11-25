@@ -1,0 +1,17 @@
+{
+  "version": 2,
+  "buildCommand": "npm run prisma:generate",
+  "functions": {
+    "api/index.ts": {
+      "runtime": "nodejs20.x",
+      "includeFiles": [
+        "mail-templates/**",
+        "node_modules/.prisma/**"
+      ]
+    }
+  },
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/api" }
+  ]
+}
+
